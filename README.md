@@ -1,7 +1,5 @@
 ### Build CLi in one line
 <sup>..or two</sup>
-
-*> Create the cli with flags:*
 ```golang
 cli := quicli.Cli{
   Name:        "SayToTheWorld",
@@ -26,7 +24,6 @@ Make http request from raw request. [url] is required and on the form: [protocol
 ```
 
 ### Use flags value in code
-*> Retrieve flag values:*
 ```golang
 cfg.GetIntFlag("count") // get the --count flag value
 // or alternatively
