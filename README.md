@@ -4,12 +4,12 @@
 ```golang
 cli := quicli.Cli{
   Name:        "SayToTheWorld",
-  Usage:       "saytotheworld [flags]",
+  Usage:       "SayToTheWorld [flags]",
   Description: "Say Hello... or not",
   Flags: quicli.Flags{
-    {Name: "count", Default: 1, Description: "How many times I will say it"},
-    {Name: "say", Default: "hello", Description: "Say something"},
-    {Name: "world", Default: true, Description: "Say it to the world"},
+    {Name: "count", Default: 1, Description: "how many times I will say it"},
+    {Name: "say", Default: "hello", Description: "say somhething"},
+    {Name: "world", Default: true, Description: "say it to the world"},
   },
 }
 cfg := cli.Parse()
