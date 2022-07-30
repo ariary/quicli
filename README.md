@@ -1,4 +1,5 @@
-### Build CLi in one line
+## 🏃⌨️ quicli
+### Build CLI in one line
 <sup>..or two</sup>
 ```golang
 cli := quicli.Cli{
@@ -29,3 +30,8 @@ cfg.GetIntFlag("count") // get the --count flag value
 // or alternatively
 cfg.GetIntFlag("c")
 ```
+
+### Ease CLI set up with a little script
+|⬇️ `quicli.sh`|
+|:---:| 
+|![demo](https://github.com/ariary/JSextractor/blob/main/img/jse-tui.gif)|
