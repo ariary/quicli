@@ -17,11 +17,12 @@ cfg := cli.Parse()
 
 With this code you obtain the following help message:
 ```
-Usage of SayToTheWorld: saytotheworld [flags]
-Say Hello... or not:
-  -c, --count     How many times I will say it
-  -s, --say		    Say something
-  -w, --world	    Say it to the world
+Usage: SayToTheWorld [flags]
+Description: Say Hello... or not
+
+--count -c      How many times I will say it
+--say   -s      Say something
+--world -w      to the world
 ```
 
 ### Use flags value in code
@@ -30,8 +31,3 @@ cfg.GetIntFlag("count") // get the --count flag value
 // or alternatively
 cfg.GetIntFlag("c")
 ```
-
-### Ease CLI set up with a little script
-|⬇️ `quicli.sh`|
-|:---:| 
-|![demo](https://github.com/ariary/JSextractor/blob/main/img/jse-tui.gif)|
