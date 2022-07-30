@@ -16,7 +16,7 @@ cfg := cli.Parse()
 
 With this code you obtain the following help message:
 ```
-Usage of sSayToTheWorld: saytotheworld [flags]
+Usage of SayToTheWorld: saytotheworld [flags]
 Make http request from raw request. [url] is required and on the form: [protocol]://[addr]:[port]
   -c, --count     How many times I will say it
   -s, --say		    Say something
