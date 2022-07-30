@@ -20,9 +20,9 @@ With this code you obtain the following help message:
 Usage: SayToTheWorld [flags]
 Description: Say Hello... or not
 
---count -c      How many times I will say it
---say   -s      Say something
---world -w      to the world
+--count -c      how many times I will say it
+--say   -s      say something
+--world -w      announce it to the world
 ```
 
 ### Use flags value in code
