@@ -80,6 +80,8 @@ func (c *Cli) Parse() (config Config) {
 			createStringFlag(config, flag, &shorts, &usage)
 		case bool:
 			createBoolFlag(config, flag, &shorts, &usage)
+		case float64:
+			createFloatFlag(config, flag, &shorts, &usage)
 			//todo: add float64;multiple value
 		default:
 			fmt.Println("Unknown flag type:", flag.Default)
@@ -141,6 +143,23 @@ func createBoolFlag(cfg Config, f Flag, shorts *[]string, usage *string) {
 	cfg[name] = &bPtr
 }
 
+func createFloatFlag(cfg Config, f Flag, shorts *[]string, usage *string) {
+	name := f.Name
+	shortName := name[0:1]
+	var floatPtr float64
+	flag.Float64Var(&floatPtr, name, float64(reflect.ValueOf(f.Default).Float()), f.Description)
+	cfg[name] = &floatPtr
+	if !stringSlice.Contains(*shorts, shortName) {
+		flag.Float64Var(&floatPtr, shortName, float64(reflect.ValueOf(f.Default).Float()), f.Description)
+		*usage += getFlagLine(f.Description, f.Default, name, shortName)
+		cfg[shortName] = &floatPtr
+		*shorts = append(*shorts, shortName)
+	} else {
+		*usage += getFlagLine(f.Description, f.Default, name, "")
+	}
+	cfg[name] = &floatPtr
+}
+
 //getFlagLine: return the string representing the flag line in help message. If short is empty, only long will be include in string
 func getFlagLine(description string, defaultValue interface{}, long string, short string) (line string) {
 	defaultValueStr := ". (default: "
@@ -151,7 +170,8 @@ func getFlagLine(description string, defaultValue interface{}, long string, shor
 		defaultValueStr += "\"" + string(reflect.ValueOf(defaultValue).String()) + "\")\n"
 	case bool:
 		defaultValueStr += strconv.FormatBool(reflect.ValueOf(defaultValue).Bool()) + ")\n"
-		//todo: add float64;multiple value
+	case float64:
+		defaultValueStr += strconv.FormatFloat(float64(reflect.ValueOf(defaultValue).Float()), 'f', -1, 64) + ")\n"
 	default:
 		fmt.Println("Unknown type for default value:", defaultValue)
 		os.Exit(1)
