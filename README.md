@@ -33,3 +33,6 @@ cfg.GetIntFlag("count") // get the --count flag value
 // or alternatively
 cfg.GetIntFlag("c")
 ```
+
+### Disclaimer
+The library is a wrapper of the built-in go `flag` package. It should only be used to quickly built CLI and it is not intented for complex CLI usage.

@@ -14,7 +14,7 @@ import (
 type Flag struct {
 	Name        string
 	Description string
-	// UseDefault  bool
+	//Default is use to determine the flag value type and must be defined
 	Default interface{}
 }
 
@@ -50,7 +50,8 @@ func (c Config) GetBoolFlag(name string) bool {
 	return *boolean
 }
 
-//Parse: parse the different flags and return the struct containing the flag values
+//Parse: parse the different flags and return the struct containing the flag values.
+// This is the core of the library. All the logic is within
 func (c *Cli) Parse() (config Config) {
 	var usage string
 	var shorts []string
@@ -66,7 +67,7 @@ func (c *Cli) Parse() (config Config) {
 		// prepation checks
 		if len(flag.Name) == 0 {
 			fmt.Println("Error: empty flag name defintion")
-			os.Exit(1)
+			os.Exit(2)
 		}
 		//check Default => if no value provided assume it is a bool flag
 		if flag.Default == nil {
@@ -85,12 +86,13 @@ func (c *Cli) Parse() (config Config) {
 			//todo: add float64;multiple value
 		default:
 			fmt.Println("Unknown flag type:", flag.Default)
-			os.Exit(1)
+			os.Exit(2)
 		}
 	}
 	usage += "\nUse \"" + os.Args[0] + " --help\" for more information about the command."
 	flag.Usage = func() { fmt.Print(usage) }
 	flag.Parse()
+
 	return config
 }
 
