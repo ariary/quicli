@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strconv"
 
 	stringSlice "github.com/ariary/go-utils/pkg/stringSlice"
 )
@@ -54,31 +55,38 @@ func (c *Cli) Parse() (config Config) {
 	var usage string
 	var shorts []string
 	config = make(map[string]interface{})
+
 	//Description
-	usage += "Usage: " + c.Usage + "\nDescription: " + c.Description + "\n\n"
+	usage += c.Description + "\n\nUsage: " + c.Usage + "\n\n"
 
 	//flags
 	fp := c.Flags
 	for i := 0; i < len(fp); i++ {
-		name := fp[i].Name
-		if len(name) == 0 {
+		flag := fp[i]
+		// prepation checks
+		if len(flag.Name) == 0 {
 			fmt.Println("Error: empty flag name defintion")
 			os.Exit(1)
 		}
+		//check Default => if no value provided assume it is a bool flag
+		if flag.Default == nil {
+			flag.Default = false
+		}
 
-		switch fp[i].Default.(type) {
+		switch flag.Default.(type) {
 		case int:
-			createIntFlag(config, fp[i], &shorts, &usage)
+			createIntFlag(config, flag, &shorts, &usage)
 		case string:
-			createStringFlag(config, fp[i], &shorts, &usage)
+			createStringFlag(config, flag, &shorts, &usage)
 		case bool:
-			createBoolFlag(config, fp[i], &shorts, &usage)
+			createBoolFlag(config, flag, &shorts, &usage)
 			//todo: add float64;multiple value
 		default:
-			fmt.Println("Unknown flag type:", fp[i].Default)
+			fmt.Println("Unknown flag type:", flag.Default)
 			os.Exit(1)
 		}
 	}
+	usage += "\nUse \"" + os.Args[0] + " --help\" for more information about the command."
 	flag.Usage = func() { fmt.Print(usage) }
 	flag.Parse()
 	return config
@@ -91,11 +99,11 @@ func createIntFlag(cfg Config, f Flag, shorts *[]string, usage *string) {
 	flag.IntVar(&intPtr, name, int(reflect.ValueOf(f.Default).Int()), f.Description)
 	if !stringSlice.Contains(*shorts, shortName) {
 		flag.IntVar(&intPtr, shortName, int(reflect.ValueOf(f.Default).Int()), f.Description)
-		*usage += "--" + name + "\t-" + shortName + "\t" + f.Description + "\n"
+		*usage += getFlagLine(f.Description, f.Default, name, shortName)
 		cfg[shortName] = &intPtr
 		*shorts = append(*shorts, shortName)
 	} else {
-		*usage += "--" + name + "\t\t" + f.Description + "\n"
+		*usage += getFlagLine(f.Description, f.Default, name, "")
 	}
 	cfg[name] = &intPtr
 }
@@ -107,11 +115,11 @@ func createStringFlag(cfg Config, f Flag, shorts *[]string, usage *string) {
 	flag.StringVar(&strPtr, name, string(reflect.ValueOf(f.Default).String()), f.Description)
 	if !stringSlice.Contains(*shorts, shortName) {
 		flag.StringVar(&strPtr, shortName, string(reflect.ValueOf(f.Default).String()), f.Description)
-		*usage += "--" + name + "\t-" + shortName + "\t" + f.Description + "\n"
+		*usage += getFlagLine(f.Description, f.Default, name, shortName)
 		cfg[shortName] = &strPtr
 		*shorts = append(*shorts, shortName)
 	} else {
-		*usage += "--" + name + "\t\t" + f.Description + "\n"
+		*usage += getFlagLine(f.Description, f.Default, name, "")
 	}
 	cfg[name] = &strPtr
 }
@@ -124,11 +132,34 @@ func createBoolFlag(cfg Config, f Flag, shorts *[]string, usage *string) {
 	cfg[name] = &bPtr
 	if !stringSlice.Contains(*shorts, shortName) {
 		flag.BoolVar(&bPtr, shortName, bool(reflect.ValueOf(f.Default).Bool()), f.Description)
-		*usage += "--" + name + "\t-" + shortName + "\t" + f.Description + "\n"
+		*usage += getFlagLine(f.Description, f.Default, name, shortName)
 		cfg[shortName] = &bPtr
 		*shorts = append(*shorts, shortName)
 	} else {
-		*usage += "--" + name + "\t\t" + f.Description + "\n"
+		*usage += getFlagLine(f.Description, f.Default, name, "")
 	}
 	cfg[name] = &bPtr
+}
+
+//getFlagLine: return the string representing the flag line in help message. If short is empty, only long will be include in string
+func getFlagLine(description string, defaultValue interface{}, long string, short string) (line string) {
+	defaultValueStr := ". (default: "
+	switch defaultValue.(type) {
+	case int:
+		defaultValueStr += strconv.Itoa(int(reflect.ValueOf(defaultValue).Int())) + ")\n"
+	case string:
+		defaultValueStr += "\"" + string(reflect.ValueOf(defaultValue).String()) + "\")\n"
+	case bool:
+		defaultValueStr += strconv.FormatBool(reflect.ValueOf(defaultValue).Bool()) + ")\n"
+		//todo: add float64;multiple value
+	default:
+		fmt.Println("Unknown type for default value:", defaultValue)
+		os.Exit(1)
+	}
+	if short == "" {
+		line = "--" + long + "\t\t" + description + defaultValueStr
+	} else {
+		line = "--" + long + "\t-" + short + "\t" + description + defaultValueStr
+	}
+	return line
 }

@@ -2,27 +2,29 @@
 ### Build CLI in one line
 <sup>..or two</sup>
 ```golang
-cli := quicli.Cli{
-  Name:        "SayToTheWorld",
-  Usage:       "SayToTheWorld [flags]",
-  Description: "Say Hello... or not",
-  Flags: quicli.Flags{
-    {Name: "count", Default: 1, Description: "how many times I will say it"},
-    {Name: "say", Default: "hello", Description: "say somhething"},
-    {Name: "world", Default: true, Description: "say it to the world"},
-  },
-}
-cfg := cli.Parse()
+	cli := quicli.Cli{
+		Usage:       "SayToTheWorld [flags]",
+		Description: "Say Hello... or not. I f you want to make the world aware of it you also could",
+		Flags: quicli.Flags{
+			{Name: "count", Default: 1, Description: "how many times I want to say it. Sometimes repetition is the key"},
+			{Name: "say", Default: "hello", Description: "say something. If you are polite start with a greeting"},
+			{Name: "world", Description: "announce it to the world"},
+		},
+	}
+	cfg := cli.Parse()
 ```
 
 With this code you obtain the following help message:
 ```
-Usage: SayToTheWorld [flags]
-Description: Say Hello... or not
+Say Hello... or not. I f you want to make the world aware of it you also could
 
---count -c      how many times I will say it
---say   -s      say something
---world -w      announce it to the world
+Usage: SayToTheWorld [flags]
+
+--count -c      how many times I want to say it. Sometimes repetition is the key. (default: 1)
+--say   -s      say something. If you are polite start with a greeting. (default: "hello")
+--world -w      announce it to the world. (default: false)
+
+Use "./sayhello --help" for more information about the command
 ```
 
 ### Use flags value in code
