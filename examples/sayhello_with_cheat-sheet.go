@@ -15,6 +15,11 @@ func main() {
 			{Name: "say", Default: "hello", Description: "say something. If you are polite start with a greeting"},
 			{Name: "world", Description: "announce it to the world"},
 		},
+		CheatSheet: quicli.Examples{
+			{Title: "Say a polite and brief hello world", CommandLine: "sayhello -w"},
+			{Title: "Say hello to your dearling", CommandLine: "sayhello -s \"Hello my dearling <3\""},
+			{Title: "Repeat hello ten times", CommandLine: "sayhello -c 10"},
+		},
 	}
 	cfg := cli.Parse()
 

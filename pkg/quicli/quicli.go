@@ -6,7 +6,10 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
+	"text/tabwriter"
 
+	"github.com/ariary/go-utils/pkg/color"
 	stringSlice "github.com/ariary/go-utils/pkg/stringSlice"
 )
 
@@ -22,11 +25,20 @@ type Flags []Flag
 
 type Config map[string]interface{}
 
+// Cheat Sheet
+type Example struct {
+	Title       string
+	CommandLine string
+}
+
+type Examples []Example
+
 // struct representing CLI
 type Cli struct {
 	Usage       string
 	Description string
 	Flags       []Flag
+	CheatSheet  []Example
 }
 
 // return the int value of an interger flag
@@ -53,12 +65,15 @@ func (c Config) GetBoolFlag(name string) bool {
 //Parse: parse the different flags and return the struct containing the flag values.
 // This is the core of the library. All the logic is within
 func (c *Cli) Parse() (config Config) {
-	var usage string
+	usage := new(strings.Builder)
+	wUsage := new(tabwriter.Writer)
+	wUsage.Init(usage, 5, 5, 0, '\t', 0)
 	var shorts []string
 	config = make(map[string]interface{})
 
 	//Description
-	usage += c.Description + "\n\nUsage: " + c.Usage + "\n\n"
+	// usage += c.Description + "\n\nUsage: " + c.Usage + "\n\n"
+	fmt.Fprintf(wUsage, c.Description+"\n\nUsage: "+c.Usage+"\n\n")
 
 	//flags
 	fp := c.Flags
@@ -76,59 +91,87 @@ func (c *Cli) Parse() (config Config) {
 
 		switch flag.Default.(type) {
 		case int:
-			createIntFlag(config, flag, &shorts, &usage)
+			createIntFlag(config, flag, &shorts, wUsage)
 		case string:
-			createStringFlag(config, flag, &shorts, &usage)
+			createStringFlag(config, flag, &shorts, wUsage)
 		case bool:
-			createBoolFlag(config, flag, &shorts, &usage)
+			createBoolFlag(config, flag, &shorts, wUsage)
 		case float64:
-			createFloatFlag(config, flag, &shorts, &usage)
+			createFloatFlag(config, flag, &shorts, wUsage)
 			//todo: add float64;multiple value
 		default:
 			fmt.Println("Unknown flag type:", flag.Default)
 			os.Exit(2)
 		}
 	}
-	usage += "\nUse \"" + os.Args[0] + " --help\" for more information about the command."
-	flag.Usage = func() { fmt.Print(usage) }
+	fmt.Fprintf(wUsage, "\nUse \""+os.Args[0]+" --help\" for more information about the command.")
+
+	//cheat sheet pt1
+	var cheatSheet bool
+	if len(c.CheatSheet) > 0 {
+		fmt.Fprintf(wUsage, "\nSee command examples with \""+os.Args[0]+" --cheat-sheet\"\n")
+		flag.BoolVar(&cheatSheet, "cheat-sheet", false, "print cheat sheet")
+		flag.BoolVar(&cheatSheet, "cs", false, "print cheat sheet")
+	}
+
+	wUsage.Flush()
+	flag.Usage = func() { fmt.Print(usage.String()) }
 	flag.Parse()
+
+	//cheat sheet pt2
+	if len(c.CheatSheet) > 0 && cheatSheet {
+		c.PrintCheatSheet()
+		os.Exit(0)
+	}
 
 	return config
 }
 
-func createIntFlag(cfg Config, f Flag, shorts *[]string, usage *string) {
+//PrintCheatSheet: print the cheat sheet of the command
+func (c *Cli) PrintCheatSheet() {
+	fmt.Println(color.BlueForeground("Cheat Sheet") + "\n")
+	examples := c.CheatSheet
+	for i := 0; i < len(examples); i++ {
+		example := examples[i]
+		fmt.Println(color.Teal("~> " + example.Title + ":"))
+		fmt.Println(example.CommandLine)
+		fmt.Println()
+	}
+}
+
+func createIntFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer) {
 	name := f.Name
 	shortName := name[0:1]
 	var intPtr int
 	flag.IntVar(&intPtr, name, int(reflect.ValueOf(f.Default).Int()), f.Description)
 	if !stringSlice.Contains(*shorts, shortName) {
 		flag.IntVar(&intPtr, shortName, int(reflect.ValueOf(f.Default).Int()), f.Description)
-		*usage += getFlagLine(f.Description, f.Default, name, shortName)
+		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, shortName))
 		cfg[shortName] = &intPtr
 		*shorts = append(*shorts, shortName)
 	} else {
-		*usage += getFlagLine(f.Description, f.Default, name, "")
+		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, ""))
 	}
 	cfg[name] = &intPtr
 }
 
-func createStringFlag(cfg Config, f Flag, shorts *[]string, usage *string) {
+func createStringFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer) {
 	name := f.Name
 	shortName := name[0:1]
 	var strPtr string
 	flag.StringVar(&strPtr, name, string(reflect.ValueOf(f.Default).String()), f.Description)
 	if !stringSlice.Contains(*shorts, shortName) {
 		flag.StringVar(&strPtr, shortName, string(reflect.ValueOf(f.Default).String()), f.Description)
-		*usage += getFlagLine(f.Description, f.Default, name, shortName)
+		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, shortName))
 		cfg[shortName] = &strPtr
 		*shorts = append(*shorts, shortName)
 	} else {
-		*usage += getFlagLine(f.Description, f.Default, name, "")
+		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, ""))
 	}
 	cfg[name] = &strPtr
 }
 
-func createBoolFlag(cfg Config, f Flag, shorts *[]string, usage *string) {
+func createBoolFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer) {
 	name := f.Name
 	shortName := name[0:1]
 	var bPtr bool
@@ -136,16 +179,16 @@ func createBoolFlag(cfg Config, f Flag, shorts *[]string, usage *string) {
 	cfg[name] = &bPtr
 	if !stringSlice.Contains(*shorts, shortName) {
 		flag.BoolVar(&bPtr, shortName, bool(reflect.ValueOf(f.Default).Bool()), f.Description)
-		*usage += getFlagLine(f.Description, f.Default, name, shortName)
+		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, shortName))
 		cfg[shortName] = &bPtr
 		*shorts = append(*shorts, shortName)
 	} else {
-		*usage += getFlagLine(f.Description, f.Default, name, "")
+		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, ""))
 	}
 	cfg[name] = &bPtr
 }
 
-func createFloatFlag(cfg Config, f Flag, shorts *[]string, usage *string) {
+func createFloatFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer) {
 	name := f.Name
 	shortName := name[0:1]
 	var floatPtr float64
@@ -153,11 +196,11 @@ func createFloatFlag(cfg Config, f Flag, shorts *[]string, usage *string) {
 	cfg[name] = &floatPtr
 	if !stringSlice.Contains(*shorts, shortName) {
 		flag.Float64Var(&floatPtr, shortName, float64(reflect.ValueOf(f.Default).Float()), f.Description)
-		*usage += getFlagLine(f.Description, f.Default, name, shortName)
+		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, shortName))
 		cfg[shortName] = &floatPtr
 		*shorts = append(*shorts, shortName)
 	} else {
-		*usage += getFlagLine(f.Description, f.Default, name, "")
+		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, ""))
 	}
 	cfg[name] = &floatPtr
 }
@@ -178,10 +221,11 @@ func getFlagLine(description string, defaultValue interface{}, long string, shor
 		fmt.Println("Unknown type for default value:", defaultValue)
 		os.Exit(1)
 	}
+
 	if short == "" {
 		line = "--" + long + "\t\t" + description + defaultValueStr
 	} else {
-		line = "--" + long + "\t-" + short + "\t" + description + defaultValueStr
+		line = "--" + long + "\t-" + short + "\t\t" + description + defaultValueStr
 	}
 	return line
 }
