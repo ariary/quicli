@@ -27,7 +27,7 @@ cfg := cli.Parse()
 
 With this code you obtain the following help message:
 ```
-Say Hello... or not. I f you want to make the world aware of it you also could
+Say Hello... or not. If you want to make the world aware of it you also could
 
 Usage: SayToTheWorld [flags]
 
