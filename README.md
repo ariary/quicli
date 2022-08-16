@@ -31,11 +31,11 @@ Say Hello... or not. If you want to make the world aware of it you also could
 
 Usage: SayToTheWorld [flags]
 
---count -c      how many times I want to say it. Sometimes repetition is the key. (default: 1)
---say   -s      say something. If you are polite start with a greeting. (default: "hello")
---world -w      announce it to the world. (default: false)
+--count -c              how many times I want to say it. Sometimes repetition is the key. (default: 1)
+--say   -s              say something. If you are polite start with a greeting. (default: "hello")
+--world -w              announce it to the world. (default: false)
 
-Use "./sayhello --help" for more information about the command
+Use "./sayhello --help" for more information about the command.
 ```
 
 ### Use flag values in code

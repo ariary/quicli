@@ -67,7 +67,7 @@ func (c Config) GetBoolFlag(name string) bool {
 func (c *Cli) Parse() (config Config) {
 	usage := new(strings.Builder)
 	wUsage := new(tabwriter.Writer)
-	wUsage.Init(usage, 5, 5, 0, '\t', 0)
+	wUsage.Init(usage, 2, 8, 1, '\t', 1)
 	var shorts []string
 	config = make(map[string]interface{})
 
@@ -104,7 +104,7 @@ func (c *Cli) Parse() (config Config) {
 			os.Exit(2)
 		}
 	}
-	fmt.Fprintf(wUsage, "\nUse \""+os.Args[0]+" --help\" for more information about the command.")
+	fmt.Fprintf(wUsage, "\nUse \""+os.Args[0]+" --help\" for more information about the command.\n")
 
 	//cheat sheet pt1
 	var cheatSheet bool
@@ -223,7 +223,7 @@ func getFlagLine(description string, defaultValue interface{}, long string, shor
 	}
 
 	if short == "" {
-		line = "--" + long + "\t\t" + description + defaultValueStr
+		line = "--" + long + "\t\t\t" + description + defaultValueStr
 	} else {
 		line = "--" + long + "\t-" + short + "\t\t" + description + defaultValueStr
 	}
