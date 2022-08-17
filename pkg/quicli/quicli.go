@@ -132,17 +132,25 @@ func (c *Cli) Parse() (config Config) {
 	return config
 }
 
-//ParseAndRun: parse the different flags and run the function of the cli. Users have to define irt, this is the core/logic of their application
-func (c *Cli) ParseAndRun() {
+//Run: parse the different flags and run the function of the cli. Users have to define it, this is the core/logic of their application
+func (c *Cli) Run() {
 	config := c.Parse()
 
 	// run
 	if c.Function != nil {
 		c.Function(config)
 	} else {
-		fmt.Println(QUICLI_ERROR_PREFIX + "you must define Function attribute for the Cli struct if you use ParseAndRun function, otherwise use Parse")
+		fmt.Println(QUICLI_ERROR_PREFIX + "you must define Function attribute for the Cli struct if you use Run function, otherwise use Parse")
 	}
 
+}
+
+func Parse(c Cli) (config Config) {
+	return c.Parse()
+}
+
+func Run(c Cli) {
+	c.Run()
 }
 
 //PrintCheatSheet: print the cheat sheet of the command
