@@ -13,6 +13,8 @@ import (
 	stringSlice "github.com/ariary/go-utils/pkg/stringSlice"
 )
 
+const QUICLI_ERROR_PREFIX = "quicli error: "
+
 //struct representing a cli flag
 type Flag struct {
 	Name        string
@@ -33,11 +35,14 @@ type Example struct {
 
 type Examples []Example
 
+type Runner func(Config)
+
 // struct representing CLI
 type Cli struct {
 	Usage       string
 	Description string
 	Flags       []Flag
+	Function    Runner
 	CheatSheet  []Example
 }
 
@@ -81,7 +86,7 @@ func (c *Cli) Parse() (config Config) {
 		flag := fp[i]
 		// prepation checks
 		if len(flag.Name) == 0 {
-			fmt.Println("Error: empty flag name defintion")
+			fmt.Println(QUICLI_ERROR_PREFIX + "empty flag name defintion")
 			os.Exit(2)
 		}
 		//check Default => if no value provided assume it is a bool flag
@@ -100,7 +105,7 @@ func (c *Cli) Parse() (config Config) {
 			createFloatFlag(config, flag, &shorts, wUsage)
 			//todo: add float64;multiple value
 		default:
-			fmt.Println("Unknown flag type:", flag.Default)
+			fmt.Println(QUICLI_ERROR_PREFIX+"Unknown flag type:", flag.Default)
 			os.Exit(2)
 		}
 	}
@@ -125,6 +130,19 @@ func (c *Cli) Parse() (config Config) {
 	}
 
 	return config
+}
+
+//ParseAndRun: parse the different flags and run the function of the cli. Users have to define irt, this is the core/logic of their application
+func (c *Cli) ParseAndRun() {
+	config := c.Parse()
+
+	// run
+	if c.Function != nil {
+		c.Function(config)
+	} else {
+		fmt.Println(QUICLI_ERROR_PREFIX + "you must define Function attribute for the Cli struct if you use ParseAndRun function, otherwise use Parse")
+	}
+
 }
 
 //PrintCheatSheet: print the cheat sheet of the command
@@ -218,8 +236,8 @@ func getFlagLine(description string, defaultValue interface{}, long string, shor
 	case float64:
 		defaultValueStr += strconv.FormatFloat(float64(reflect.ValueOf(defaultValue).Float()), 'f', -1, 64) + ")\n"
 	default:
-		fmt.Println("Unknown type for default value:", defaultValue)
-		os.Exit(1)
+		fmt.Println(QUICLI_ERROR_PREFIX+"Unknown type for default value:", defaultValue)
+		os.Exit(2)
 	}
 
 	if short == "" {
