@@ -25,7 +25,10 @@ type Flag struct {
 
 type Flags []Flag
 
-type Config map[string]interface{}
+type Config struct {
+	Flags map[string]interface{}
+	Args  []string
+}
 
 // Cheat Sheet
 type Example struct {
@@ -48,21 +51,21 @@ type Cli struct {
 
 // return the int value of an interger flag
 func (c Config) GetIntFlag(name string) int {
-	elem := c[name]
+	elem := c.Flags[name]
 	i := reflect.ValueOf(elem).Interface().(*int)
 	return *i
 }
 
 // return the string value of a string flag
 func (c Config) GetStringFlag(name string) string {
-	elem := c[name]
+	elem := c.Flags[name]
 	str := reflect.ValueOf(elem).Interface().(*string)
 	return *str
 }
 
 // return the string value of a string flag
 func (c Config) GetBoolFlag(name string) bool {
-	elem := c[name]
+	elem := c.Flags[name]
 	boolean := reflect.ValueOf(elem).Interface().(*bool)
 	return *boolean
 }
@@ -74,7 +77,7 @@ func (c *Cli) Parse() (config Config) {
 	wUsage := new(tabwriter.Writer)
 	wUsage.Init(usage, 2, 8, 1, '\t', 1)
 	var shorts []string
-	config = make(map[string]interface{})
+	config.Flags = make(map[string]interface{})
 
 	//Description
 	// usage += c.Description + "\n\nUsage: " + c.Usage + "\n\n"
@@ -122,6 +125,7 @@ func (c *Cli) Parse() (config Config) {
 	wUsage.Flush()
 	flag.Usage = func() { fmt.Print(usage.String()) }
 	flag.Parse()
+	config.Args = flag.Args()
 
 	//cheat sheet pt2
 	if len(c.CheatSheet) > 0 && cheatSheet {
@@ -173,12 +177,12 @@ func createIntFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Write
 	if !stringSlice.Contains(*shorts, shortName) {
 		flag.IntVar(&intPtr, shortName, int(reflect.ValueOf(f.Default).Int()), f.Description)
 		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, shortName))
-		cfg[shortName] = &intPtr
+		cfg.Flags[shortName] = &intPtr
 		*shorts = append(*shorts, shortName)
 	} else {
 		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, ""))
 	}
-	cfg[name] = &intPtr
+	cfg.Flags[name] = &intPtr
 }
 
 func createStringFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer) {
@@ -189,12 +193,12 @@ func createStringFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Wr
 	if !stringSlice.Contains(*shorts, shortName) {
 		flag.StringVar(&strPtr, shortName, string(reflect.ValueOf(f.Default).String()), f.Description)
 		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, shortName))
-		cfg[shortName] = &strPtr
+		cfg.Flags[shortName] = &strPtr
 		*shorts = append(*shorts, shortName)
 	} else {
 		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, ""))
 	}
-	cfg[name] = &strPtr
+	cfg.Flags[name] = &strPtr
 }
 
 func createBoolFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer) {
@@ -202,16 +206,16 @@ func createBoolFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writ
 	shortName := name[0:1]
 	var bPtr bool
 	flag.BoolVar(&bPtr, name, bool(reflect.ValueOf(f.Default).Bool()), f.Description)
-	cfg[name] = &bPtr
+	cfg.Flags[name] = &bPtr
 	if !stringSlice.Contains(*shorts, shortName) {
 		flag.BoolVar(&bPtr, shortName, bool(reflect.ValueOf(f.Default).Bool()), f.Description)
 		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, shortName))
-		cfg[shortName] = &bPtr
+		cfg.Flags[shortName] = &bPtr
 		*shorts = append(*shorts, shortName)
 	} else {
 		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, ""))
 	}
-	cfg[name] = &bPtr
+	cfg.Flags[name] = &bPtr
 }
 
 func createFloatFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer) {
@@ -219,16 +223,16 @@ func createFloatFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Wri
 	shortName := name[0:1]
 	var floatPtr float64
 	flag.Float64Var(&floatPtr, name, float64(reflect.ValueOf(f.Default).Float()), f.Description)
-	cfg[name] = &floatPtr
+	cfg.Flags[name] = &floatPtr
 	if !stringSlice.Contains(*shorts, shortName) {
 		flag.Float64Var(&floatPtr, shortName, float64(reflect.ValueOf(f.Default).Float()), f.Description)
 		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, shortName))
-		cfg[shortName] = &floatPtr
+		cfg.Flags[shortName] = &floatPtr
 		*shorts = append(*shorts, shortName)
 	} else {
 		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, ""))
 	}
-	cfg[name] = &floatPtr
+	cfg.Flags[name] = &floatPtr
 }
 
 //getFlagLine: return the string representing the flag line in help message. If short is empty, only long will be include in string
