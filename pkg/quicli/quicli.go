@@ -20,7 +20,8 @@ type Flag struct {
 	Name        string
 	Description string
 	//Default is use to determine the flag value type and must be defined
-	Default interface{}
+	Default     interface{}
+	NoShortName bool
 }
 
 type Flags []Flag
@@ -174,7 +175,7 @@ func createIntFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Write
 	shortName := name[0:1]
 	var intPtr int
 	flag.IntVar(&intPtr, name, int(reflect.ValueOf(f.Default).Int()), f.Description)
-	if !stringSlice.Contains(*shorts, shortName) {
+	if !stringSlice.Contains(*shorts, shortName) && !f.NoShortName {
 		flag.IntVar(&intPtr, shortName, int(reflect.ValueOf(f.Default).Int()), f.Description)
 		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, shortName))
 		cfg.Flags[shortName] = &intPtr
@@ -190,7 +191,7 @@ func createStringFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Wr
 	shortName := name[0:1]
 	var strPtr string
 	flag.StringVar(&strPtr, name, string(reflect.ValueOf(f.Default).String()), f.Description)
-	if !stringSlice.Contains(*shorts, shortName) {
+	if !stringSlice.Contains(*shorts, shortName) && !f.NoShortName {
 		flag.StringVar(&strPtr, shortName, string(reflect.ValueOf(f.Default).String()), f.Description)
 		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, shortName))
 		cfg.Flags[shortName] = &strPtr
@@ -207,7 +208,7 @@ func createBoolFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writ
 	var bPtr bool
 	flag.BoolVar(&bPtr, name, bool(reflect.ValueOf(f.Default).Bool()), f.Description)
 	cfg.Flags[name] = &bPtr
-	if !stringSlice.Contains(*shorts, shortName) {
+	if !stringSlice.Contains(*shorts, shortName) && !f.NoShortName {
 		flag.BoolVar(&bPtr, shortName, bool(reflect.ValueOf(f.Default).Bool()), f.Description)
 		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, shortName))
 		cfg.Flags[shortName] = &bPtr
@@ -224,7 +225,7 @@ func createFloatFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Wri
 	var floatPtr float64
 	flag.Float64Var(&floatPtr, name, float64(reflect.ValueOf(f.Default).Float()), f.Description)
 	cfg.Flags[name] = &floatPtr
-	if !stringSlice.Contains(*shorts, shortName) {
+	if !stringSlice.Contains(*shorts, shortName) && !f.NoShortName {
 		flag.Float64Var(&floatPtr, shortName, float64(reflect.ValueOf(f.Default).Float()), f.Description)
 		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, shortName))
 		cfg.Flags[shortName] = &floatPtr
