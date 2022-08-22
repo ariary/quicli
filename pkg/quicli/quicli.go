@@ -20,8 +20,10 @@ type Flag struct {
 	Name        string
 	Description string
 	//Default is use to determine the flag value type and must be defined
-	Default     interface{}
-	NoShortName bool
+	Default           interface{}
+	NoShortName       bool
+	NotForRootCommand bool
+	ForSubcommand     SubcommandSet
 }
 
 type Flags []Flag
@@ -48,6 +50,7 @@ type Cli struct {
 	Flags       []Flag
 	Function    Runner
 	CheatSheet  []Example
+	Subcommands []Subcommand
 }
 
 // return the int value of an interger flag
@@ -150,10 +153,12 @@ func (c *Cli) Run() {
 
 }
 
+//Parse: parse the CLI given in parameter
 func Parse(c Cli) (config Config) {
 	return c.Parse()
 }
 
+//Run: run the application corresponding of the CLI given as parameter
 func Run(c Cli) {
 	c.Run()
 }
@@ -170,6 +175,7 @@ func (c *Cli) PrintCheatSheet() {
 	}
 }
 
+//createIntFlag: create a flag of type int and adapt help message accordingly
 func createIntFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer) {
 	name := f.Name
 	shortName := name[0:1]
@@ -186,6 +192,7 @@ func createIntFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Write
 	cfg.Flags[name] = &intPtr
 }
 
+//createStringFlag: create a flag of type string and adapt help message accordingly
 func createStringFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer) {
 	name := f.Name
 	shortName := name[0:1]
@@ -202,6 +209,7 @@ func createStringFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Wr
 	cfg.Flags[name] = &strPtr
 }
 
+//createBoolFlag: create a flag of type bool and adapt help message accordingly
 func createBoolFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer) {
 	name := f.Name
 	shortName := name[0:1]
@@ -219,6 +227,7 @@ func createBoolFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writ
 	cfg.Flags[name] = &bPtr
 }
 
+//createFloatFlag: create a flag of type float64 and adapt help message accordingly
 func createFloatFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer) {
 	name := f.Name
 	shortName := name[0:1]

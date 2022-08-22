@@ -46,6 +46,30 @@ quicli.Run(quicli.Cli{Usage:"SayToTheWorld [flags]",Description: "Say Hello... o
 ```
 </details>
 
+<details>
+    <summary>You want a subcommand pattern?! okay</summary>
+
+```golang
+	cli := quicli.Cli{
+		Usage:       "SayToTheWorld [command] [flags]",
+		Description: "Say Hello... or not. If you want to make the world aware of it you also could",
+		Flags: quicli.Flags{
+			{Name: "count", Default: 1, Description: "how many times I want to say it. Sometimes repetition is the key"},
+			{Name: "foreground", Description: "change foreground background", ForSubcommand: quicli.SubcommandSet{"color"}},
+			{Name: "say", Default: "hello", Description: "say something. If you are polite start with a greeting"},
+			{Name: "world", Description: "announce it to the world"},
+			{Name: "surprise", Description: "you will see my friend", ForSubcommand: quicli.SubcommandSet{"toto", "color"}, NotForRootCommand: true},
+		},
+		Function: Main,
+		Subcommands: quicli.Subcommands{
+			{Name: "color", Description: "print coloured message", Function: Color},
+			{Name: "toto", Description: "??", Function: Toto},
+		},
+	}
+	cli.RunWithSubcommand()
+```
+</details>
+
 ### Use flag values in code
 ```golang
 cfg.GetIntFlag("count") // get the --count flag value
