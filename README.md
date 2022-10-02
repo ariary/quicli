@@ -39,7 +39,7 @@ cfg := cli.Parse()
 </details>
 
 <details>
-    <summary>Real one-line (Parse and run)</summary>
+    <summary>Real one-liner (Parse and run)</summary>
 
 ```golang
 quicli.Run(quicli.Cli{Usage:"SayToTheWorld [flags]",Description: "Say Hello... or not. If you want to make the world aware of it you also could",Flags: quicli.Flags{{Name: "count", Default: 1, Description: "how many times I want to say it. Sometimes repetition is the key"},{Name: "say", Default: "hello", Description: "say something. If you are polite start with a greeting"},{Name: "world", Description: "announce it to the world"},},Function: SayHello,})
