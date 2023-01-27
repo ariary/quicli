@@ -88,20 +88,26 @@ func (c *Cli) RunWithSubcommand() {
 		case int:
 			if isRootCommand(c.Subcommands) && !f.NotForRootCommand {
 				createIntFlagFs(config, f, &shorts, wUsage, fs)
-			} else if len(os.Args) > 1 && f.isForSubcommand(os.Args[1]) {
-				createIntFlagFs(config, f, &shorts, wUsage, fs)
+			} else if len(os.Args) > 1 {
+				if f.isForSubcommand(os.Args[1]) {
+					createIntFlagFs(config, f, &shorts, wUsage, fs)
+				}
 			}
 		case string:
 			if isRootCommand(c.Subcommands) && !f.NotForRootCommand {
 				createStringFlagFs(config, f, &shorts, wUsage, fs)
-			} else if len(os.Args) > 1 && f.isForSubcommand(os.Args[1]) {
-				createStringFlagFs(config, f, &shorts, wUsage, fs)
+			} else if len(os.Args) > 1 {
+				if f.isForSubcommand(os.Args[1]) {
+					createStringFlagFs(config, f, &shorts, wUsage, fs)
+				}
 			}
 		case bool:
 			if isRootCommand(c.Subcommands) && !f.NotForRootCommand {
 				createBoolFlagFs(config, f, &shorts, wUsage, fs)
-			} else if len(os.Args) > 1 && f.isForSubcommand(os.Args[1]) {
-				createBoolFlagFs(config, f, &shorts, wUsage, fs)
+			} else if len(os.Args) > 1 {
+				if f.isForSubcommand(os.Args[1]) {
+					createBoolFlagFs(config, f, &shorts, wUsage, fs)
+				}
 			}
 		case float64:
 			if isRootCommand(c.Subcommands) && !f.NotForRootCommand {
