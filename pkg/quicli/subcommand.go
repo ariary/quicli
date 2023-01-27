@@ -23,7 +23,7 @@ type Subcommands []Subcommand
 
 type SubcommandSet []string
 
-//RunWithSubcommand: equivalent of Run function when cli has subcommand defined
+// RunWithSubcommand: equivalent of Run function when cli has subcommand defined
 func (c *Cli) RunWithSubcommand() {
 	var config Config
 	usage := new(strings.Builder)
@@ -88,25 +88,25 @@ func (c *Cli) RunWithSubcommand() {
 		case int:
 			if isRootCommand(c.Subcommands) && !f.NotForRootCommand {
 				createIntFlagFs(config, f, &shorts, wUsage, fs)
-			} else if f.isForSubcommand(os.Args[1]) {
+			} else if len(os.Args) > 1 && f.isForSubcommand(os.Args[1]) {
 				createIntFlagFs(config, f, &shorts, wUsage, fs)
 			}
 		case string:
 			if isRootCommand(c.Subcommands) && !f.NotForRootCommand {
 				createStringFlagFs(config, f, &shorts, wUsage, fs)
-			} else if f.isForSubcommand(os.Args[1]) {
+			} else if len(os.Args) > 1 && f.isForSubcommand(os.Args[1]) {
 				createStringFlagFs(config, f, &shorts, wUsage, fs)
 			}
 		case bool:
 			if isRootCommand(c.Subcommands) && !f.NotForRootCommand {
 				createBoolFlagFs(config, f, &shorts, wUsage, fs)
-			} else if f.isForSubcommand(os.Args[1]) {
+			} else if len(os.Args) > 1 && f.isForSubcommand(os.Args[1]) {
 				createBoolFlagFs(config, f, &shorts, wUsage, fs)
 			}
 		case float64:
 			if isRootCommand(c.Subcommands) && !f.NotForRootCommand {
 				createFloatFlagFs(config, f, &shorts, wUsage, fs)
-			} else if f.isForSubcommand(os.Args[1]) {
+			} else if len(os.Args) > 1 && f.isForSubcommand(os.Args[1]) {
 				createFloatFlagFs(config, f, &shorts, wUsage, fs)
 			}
 		default:
@@ -148,7 +148,7 @@ func (c *Cli) RunWithSubcommand() {
 	}
 }
 
-//isRootCommand: return true if the command line is targetting the root command, false if it is targgeting a subcommand
+// isRootCommand: return true if the command line is targetting the root command, false if it is targgeting a subcommand
 func isRootCommand(subcommands Subcommands) bool {
 	if len(os.Args) < 2 {
 		return true
@@ -158,7 +158,7 @@ func isRootCommand(subcommands Subcommands) bool {
 	}
 }
 
-//getSubcommandByName: return true if the command line is targetting the root command, false if it is targgeting a subcommand
+// getSubcommandByName: return true if the command line is targetting the root command, false if it is targgeting a subcommand
 func getSubcommandByName(subcommands Subcommands, subcommandName string) (sub Subcommand) {
 
 	for i := 0; i < len(subcommands); i++ {
@@ -169,7 +169,7 @@ func getSubcommandByName(subcommands Subcommands, subcommandName string) (sub Su
 	return sub
 }
 
-//isForSubcommand: return true if the subcommand is concerned by the flag
+// isForSubcommand: return true if the subcommand is concerned by the flag
 func (f *Flag) isForSubcommand(subcommandName string) bool {
 	for i := 0; i < len(f.ForSubcommand); i++ {
 		if subcommandName == f.ForSubcommand[i] {
