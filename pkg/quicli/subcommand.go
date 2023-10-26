@@ -8,22 +8,32 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/ariary/go-utils/pkg/color"
 	stringSlice "github.com/ariary/go-utils/pkg/stringSlice"
+	mapset "github.com/deckarep/golang-set/v2"
 )
 
 // Subcommand
 type Subcommand struct {
 	Name        string
+	Aliases     mapset.Set[string]
 	Description string
 	Function    Runner
 	// Flags       []Flag
+}
+
+func Aliases(aliases ...string) (aliasesSet mapset.Set[string]) {
+	aliasesSet = mapset.NewSet[string]()
+	aliasesSet.Append(aliases...)
+
+	return aliasesSet
 }
 
 type Subcommands []Subcommand
 
 type SubcommandSet []string
 
-//RunWithSubcommand: equivalent of Run function when cli has subcommand defined
+// RunWithSubcommand: equivalent of Run function when cli has subcommand defined
 func (c *Cli) RunWithSubcommand() {
 	var config Config
 	usage := new(strings.Builder)
@@ -35,20 +45,23 @@ func (c *Cli) RunWithSubcommand() {
 
 	//Description
 	if isRootCommand(c.Subcommands) {
-
 		if len(c.Subcommands) > 0 {
 			subcommandSet := []string{}
 			for i := 0; i < len(c.Subcommands); i++ {
-				subcommandSet = append(subcommandSet, c.Subcommands[i].Name)
+				//to do check that there isn't duplicate: subcommandSet in set
+				subcommandSet = append(subcommandSet, c.Subcommands[i].Name) // add name
+				if c.Subcommands[i].Aliases != nil {                         //add aliases
+					subcommandSet = append(subcommandSet, c.Subcommands[i].Aliases.ToSlice()...)
+				}
 			}
-			fmt.Fprintf(wUsage, c.Description+"\n\nUsage: "+c.Usage+"\nAvailable commands: "+strings.Join(subcommandSet, ", ")+"\n\n")
+			fmt.Fprintf(wUsage, color.Yellow(c.Description)+"\n\nUsage: "+c.Usage+"\nAvailable commands: "+strings.Join(subcommandSet, ", ")+"\n\n")
 		} else {
-			fmt.Fprintf(wUsage, c.Description+"\n\nUsage: "+c.Usage+"\n\n")
+			fmt.Fprintf(wUsage, color.Yellow(c.Description)+"\n\nUsage: "+c.Usage+"\n\n")
 		}
 	} else {
 		//TODO: check if subcommand is misspelled
 		sub := getSubcommandByName(c.Subcommands, os.Args[1])
-		fmt.Fprintf(wUsage, c.Description+"\n\nUsage: "+c.Usage+"\n"+"Command "+sub.Name+": "+sub.Description+"\n\n")
+		fmt.Fprintf(wUsage, c.Description+"\n\nUsage: "+c.Usage+"\n"+"Command "+color.Cyan(sub.Name)+": "+sub.Description+"\n\n")
 	}
 
 	//Subcommands preliminary checks
@@ -75,7 +88,6 @@ func (c *Cli) RunWithSubcommand() {
 		if f.Default == nil {
 			f.Default = false
 		}
-		//check if subcommands speicified in flags name are good
 		for i := 0; i < len(f.ForSubcommand); i++ {
 			subcommandName := f.ForSubcommand[i]
 			if getSubcommandByName(c.Subcommands, subcommandName).Name == "" {
@@ -84,29 +96,40 @@ func (c *Cli) RunWithSubcommand() {
 			}
 		}
 
+		// before other stuff add subcommand aliases for the flag..
+		var flagForSub SubcommandSet
+		for i := 0; i < len(f.ForSubcommand); i++ {
+			subcommand := getSubcommandByName(c.Subcommands, f.ForSubcommand[i])
+			if subcommand.Aliases != nil {
+				flagForSub = append(flagForSub, subcommand.Aliases.ToSlice()...)
+			}
+
+		}
+		f.ForSubcommand = append(f.ForSubcommand, flagForSub...)
+
 		switch f.Default.(type) {
 		case int:
 			if isRootCommand(c.Subcommands) && !f.NotForRootCommand {
 				createIntFlagFs(config, f, &shorts, wUsage, fs)
-			} else if f.isForSubcommand(os.Args[1]) {
+			} else if len(os.Args) > 1 && f.isForSubcommand(os.Args[1]) {
 				createIntFlagFs(config, f, &shorts, wUsage, fs)
 			}
 		case string:
 			if isRootCommand(c.Subcommands) && !f.NotForRootCommand {
 				createStringFlagFs(config, f, &shorts, wUsage, fs)
-			} else if f.isForSubcommand(os.Args[1]) {
+			} else if len(os.Args) > 1 && f.isForSubcommand(os.Args[1]) {
 				createStringFlagFs(config, f, &shorts, wUsage, fs)
 			}
 		case bool:
 			if isRootCommand(c.Subcommands) && !f.NotForRootCommand {
 				createBoolFlagFs(config, f, &shorts, wUsage, fs)
-			} else if f.isForSubcommand(os.Args[1]) {
+			} else if len(os.Args) > 1 && f.isForSubcommand(os.Args[1]) {
 				createBoolFlagFs(config, f, &shorts, wUsage, fs)
 			}
 		case float64:
 			if isRootCommand(c.Subcommands) && !f.NotForRootCommand {
 				createFloatFlagFs(config, f, &shorts, wUsage, fs)
-			} else if f.isForSubcommand(os.Args[1]) {
+			} else if len(os.Args) > 1 && f.isForSubcommand(os.Args[1]) {
 				createFloatFlagFs(config, f, &shorts, wUsage, fs)
 			}
 		default:
@@ -114,7 +137,7 @@ func (c *Cli) RunWithSubcommand() {
 			os.Exit(2)
 		}
 	}
-	fmt.Fprintf(wUsage, "\nUse \""+os.Args[0]+" --help\" for more information about the command.\n")
+	fmt.Fprintf(wUsage, "\nUse \""+color.Yellow(os.Args[0])+" --help\" for more information about the command.\n")
 
 	//cheat sheet pt1
 	var cheatSheet bool
@@ -148,7 +171,7 @@ func (c *Cli) RunWithSubcommand() {
 	}
 }
 
-//isRootCommand: return true if the command line is targetting the root command, false if it is targgeting a subcommand
+// isRootCommand: return true if the command line is targetting the root command, false if it is targgeting a subcommand
 func isRootCommand(subcommands Subcommands) bool {
 	if len(os.Args) < 2 {
 		return true
@@ -158,21 +181,23 @@ func isRootCommand(subcommands Subcommands) bool {
 	}
 }
 
-//getSubcommandByName: return true if the command line is targetting the root command, false if it is targgeting a subcommand
+// getSubcommandByName: return the subcommand with name (take into account aliases)
 func getSubcommandByName(subcommands Subcommands, subcommandName string) (sub Subcommand) {
-
 	for i := 0; i < len(subcommands); i++ {
 		if subcommandName == subcommands[i].Name {
+			return subcommands[i]
+		}
+		if subcommands[i].Aliases != nil && subcommands[i].Aliases.Contains(subcommandName) {
 			return subcommands[i]
 		}
 	}
 	return sub
 }
 
-//isForSubcommand: return true if the subcommand is concerned by the flag
+// isForSubcommand: return true if the subcommand is concerned by the flag
 func (f *Flag) isForSubcommand(subcommandName string) bool {
 	for i := 0; i < len(f.ForSubcommand); i++ {
-		if subcommandName == f.ForSubcommand[i] {
+		if subcommandName == f.ForSubcommand[i] { // look subcommand name
 			return true
 		}
 	}

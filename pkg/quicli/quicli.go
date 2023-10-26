@@ -15,7 +15,7 @@ import (
 
 const QUICLI_ERROR_PREFIX = "quicli error: "
 
-//struct representing a cli flag
+// struct representing a cli flag
 type Flag struct {
 	Name        string
 	Description string
@@ -56,6 +56,10 @@ type Cli struct {
 // return the int value of an interger flag
 func (c Config) GetIntFlag(name string) int {
 	elem := c.Flags[name]
+	if elem == nil {
+		fmt.Println(QUICLI_ERROR_PREFIX, "failed to retrieve value for flag:", name)
+		os.Exit(92)
+	}
 	i := reflect.ValueOf(elem).Interface().(*int)
 	return *i
 }
@@ -63,6 +67,10 @@ func (c Config) GetIntFlag(name string) int {
 // return the string value of a string flag
 func (c Config) GetStringFlag(name string) string {
 	elem := c.Flags[name]
+	if elem == nil {
+		fmt.Println(QUICLI_ERROR_PREFIX, "failed to retrieve value for flag:", name)
+		os.Exit(92)
+	}
 	str := reflect.ValueOf(elem).Interface().(*string)
 	return *str
 }
@@ -70,11 +78,15 @@ func (c Config) GetStringFlag(name string) string {
 // return the string value of a string flag
 func (c Config) GetBoolFlag(name string) bool {
 	elem := c.Flags[name]
+	if elem == nil {
+		fmt.Println(QUICLI_ERROR_PREFIX, "failed to retrieve value for flag:", name)
+		os.Exit(92)
+	}
 	boolean := reflect.ValueOf(elem).Interface().(*bool)
 	return *boolean
 }
 
-//Parse: parse the different flags and return the struct containing the flag values.
+// Parse: parse the different flags and return the struct containing the flag values.
 // This is the core of the library. All the logic is within
 func (c *Cli) Parse() (config Config) {
 	usage := new(strings.Builder)
@@ -85,7 +97,7 @@ func (c *Cli) Parse() (config Config) {
 
 	//Description
 	// usage += c.Description + "\n\nUsage: " + c.Usage + "\n\n"
-	fmt.Fprintf(wUsage, c.Description+"\n\nUsage: "+c.Usage+"\n\n")
+	fmt.Fprintf(wUsage, color.Yellow(c.Description)+"\n\nUsage: "+c.Usage+"\n\n")
 
 	//flags
 	fp := c.Flags
@@ -116,12 +128,12 @@ func (c *Cli) Parse() (config Config) {
 			os.Exit(2)
 		}
 	}
-	fmt.Fprintf(wUsage, "\nUse \""+os.Args[0]+" --help\" for more information about the command.\n")
+	fmt.Fprintf(wUsage, "\nUse \""+color.Yellow(os.Args[0])+" --help\" for more information about the command.\n")
 
 	//cheat sheet pt1
 	var cheatSheet bool
 	if len(c.CheatSheet) > 0 {
-		fmt.Fprintf(wUsage, "\nSee command examples with \""+os.Args[0]+" --cheat-sheet\"\n")
+		fmt.Fprintf(wUsage, "\nSee command examples with \""+color.Yellow(os.Args[0])+" --cheat-sheet\"\n")
 		flag.BoolVar(&cheatSheet, "cheat-sheet", false, "print cheat sheet")
 		flag.BoolVar(&cheatSheet, "cs", false, "print cheat sheet")
 	}
@@ -140,7 +152,7 @@ func (c *Cli) Parse() (config Config) {
 	return config
 }
 
-//Run: parse the different flags and run the function of the cli. Users have to define it, this is the core/logic of their application
+// Run: parse the different flags and run the function of the cli. Users have to define it, this is the core/logic of their application
 func (c *Cli) Run() {
 	config := c.Parse()
 
@@ -153,17 +165,17 @@ func (c *Cli) Run() {
 
 }
 
-//Parse: parse the CLI given in parameter
+// Parse: parse the CLI given in parameter
 func Parse(c Cli) (config Config) {
 	return c.Parse()
 }
 
-//Run: run the application corresponding of the CLI given as parameter
+// Run: run the application corresponding of the CLI given as parameter
 func Run(c Cli) {
 	c.Run()
 }
 
-//PrintCheatSheet: print the cheat sheet of the command
+// PrintCheatSheet: print the cheat sheet of the command
 func (c *Cli) PrintCheatSheet() {
 	fmt.Println(color.BlueForeground("Cheat Sheet") + "\n")
 	examples := c.CheatSheet
@@ -175,7 +187,7 @@ func (c *Cli) PrintCheatSheet() {
 	}
 }
 
-//createIntFlag: create a flag of type int and adapt help message accordingly
+// createIntFlag: create a flag of type int and adapt help message accordingly
 func createIntFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer) {
 	name := f.Name
 	shortName := name[0:1]
@@ -192,7 +204,7 @@ func createIntFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Write
 	cfg.Flags[name] = &intPtr
 }
 
-//createStringFlag: create a flag of type string and adapt help message accordingly
+// createStringFlag: create a flag of type string and adapt help message accordingly
 func createStringFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer) {
 	name := f.Name
 	shortName := name[0:1]
@@ -209,7 +221,7 @@ func createStringFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Wr
 	cfg.Flags[name] = &strPtr
 }
 
-//createBoolFlag: create a flag of type bool and adapt help message accordingly
+// createBoolFlag: create a flag of type bool and adapt help message accordingly
 func createBoolFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer) {
 	name := f.Name
 	shortName := name[0:1]
@@ -227,7 +239,7 @@ func createBoolFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writ
 	cfg.Flags[name] = &bPtr
 }
 
-//createFloatFlag: create a flag of type float64 and adapt help message accordingly
+// createFloatFlag: create a flag of type float64 and adapt help message accordingly
 func createFloatFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer) {
 	name := f.Name
 	shortName := name[0:1]
@@ -245,7 +257,7 @@ func createFloatFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Wri
 	cfg.Flags[name] = &floatPtr
 }
 
-//getFlagLine: return the string representing the flag line in help message. If short is empty, only long will be include in string
+// getFlagLine: return the string representing the flag line in help message. If short is empty, only long will be include in string
 func getFlagLine(description string, defaultValue interface{}, long string, short string) (line string) {
 	defaultValueStr := ". (default: "
 	switch defaultValue.(type) {
