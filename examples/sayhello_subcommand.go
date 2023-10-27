@@ -64,7 +64,7 @@ func main() {
 		Subcommands: q.Subcommands{
 			{Name: "color", Aliases: q.Aliases("co", "x"), Description: "print coloured message", Function: Color},
 			{Name: "toto", Description: "??", Function: Toto},
-			{Name: "🔥", Description: "try me", Function: Titi},
+			{Name: "🔥", Aliases: q.Aliases("🧯"), Description: "try me", Function: Titi},
 		},
 	}
 	cli.RunWithSubcommand()

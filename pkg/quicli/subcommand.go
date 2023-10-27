@@ -33,6 +33,8 @@ type Subcommands []Subcommand
 
 type SubcommandSet []string
 
+var AllAliases mapset.Set[string]
+
 // RunWithSubcommand: equivalent of Run function when cli has subcommand defined
 func (c *Cli) RunWithSubcommand() {
 	var config Config
@@ -66,13 +68,9 @@ func (c *Cli) RunWithSubcommand() {
 
 	//Subcommands preliminary checks
 	if len(c.Subcommands) > 0 {
-		for i := 0; i < len(c.Subcommands); i++ {
-			sub := c.Subcommands[i]
-			if sub.Function == nil {
-				fmt.Println(QUICLI_ERROR_PREFIX+"subcommand", sub.Name, "does not defined mandatory 'Function' attribute")
-				os.Exit(2)
-			}
-		}
+		checkSubcommandFunctionIsDefined(c)
+		AllAliases = mapset.NewSet[string]()
+		checkSubcommandAliasesUniqueness(c)
 	}
 
 	//flags
@@ -268,4 +266,31 @@ func createFloatFlagFs(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.W
 		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, ""))
 	}
 	cfg.Flags[name] = &floatPtr
+}
+
+// checkSubcommandFunctionIsDefined: assert the subcommmand Function is filled, exit otherwise
+func checkSubcommandFunctionIsDefined(c *Cli) {
+	for i := 0; i < len(c.Subcommands); i++ {
+		sub := c.Subcommands[i]
+		if sub.Function == nil {
+			fmt.Println(QUICLI_ERROR_PREFIX+"subcommand", sub.Name, "does not define mandatory 'Function' attribute")
+			os.Exit(2)
+		}
+	}
+}
+
+// checkSubcommandFunctionIsDefined: assert the subcommmand Aliases are unique (ie not same alias for two different subcommands), exit otherwise
+func checkSubcommandAliasesUniqueness(c *Cli) {
+	for i := 0; i < len(c.Subcommands); i++ {
+		subcommandAliases := c.Subcommands[i].Aliases
+		if subcommandAliases != nil {
+			commonAliases := AllAliases.Intersect(subcommandAliases)
+			if commonAliases.Cardinality() == 0 {
+				AllAliases.Append(subcommandAliases.ToSlice()...)
+			} else {
+				fmt.Println(QUICLI_ERROR_PREFIX+"subcommand", c.Subcommands[i].Name, "define some already defined aliases ('", strings.Join(commonAliases.ToSlice(), ","), "')")
+				os.Exit(2)
+			}
+		}
+	}
 }
