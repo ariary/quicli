@@ -2,7 +2,7 @@
 ### Build CLI in Go without the ceremony
 
 No init functions. No command registration. No flag pointers.
-Define your CLI in one expression — or just tag a struct.
+Define your CLI in one expression *(or just tag a struct)*
 
 Inspired by [nim's cligen](https://github.com/c-blake/cligen).
 
@@ -10,7 +10,7 @@ Inspired by [nim's cligen](https://github.com/c-blake/cligen).
 
 ### The zero-boilerplate way
 
-Tag a struct, pass a function. Your flags are already in `o` — no `GetXxxFlag` calls:
+Tag a struct, pass a function. Your flags are already in `Opts` Struct:
 
 ```golang
 type Opts struct {
