@@ -5,12 +5,10 @@ import (
 	"fmt"
 	"os"
 	"reflect"
-	"strconv"
 	"strings"
 	"text/tabwriter"
 
 	"github.com/ariary/go-utils/pkg/color"
-	stringSlice "github.com/ariary/go-utils/pkg/stringSlice"
 )
 
 const QUICLI_ERROR_PREFIX = "quicli error: "
@@ -20,16 +18,18 @@ type Flag struct {
 	Name        string
 	Description string
 	//Default is use to determine the flag value type and must be defined
-	Default           interface{}
+	Default           any
 	NoShortName       bool
+	ShortName         string        // overrides auto first-letter derivation
 	NotForRootCommand bool
-	ForSubcommand     SubcommandSet
+	SharedSubcommand  SubcommandSet
+	EnvVar            string        // env var override (activated in PR2)
 }
 
 type Flags []Flag
 
 type Config struct {
-	Flags map[string]interface{}
+	Flags map[string]any
 	Args  []string
 }
 
@@ -86,6 +86,28 @@ func (c Config) GetBoolFlag(name string) bool {
 	return *boolean
 }
 
+// GetFloatFlag returns the float64 value of a float64 flag.
+func (c Config) GetFloatFlag(name string) float64 {
+	elem := c.Flags[name]
+	if elem == nil {
+		fmt.Println(QUICLI_ERROR_PREFIX, "failed to retrieve value for flag:", name)
+		os.Exit(92)
+	}
+	f := reflect.ValueOf(elem).Interface().(*float64)
+	return *f
+}
+
+// GetStringSliceFlag returns the []string value of a string slice flag.
+func (c Config) GetStringSliceFlag(name string) []string {
+	elem := c.Flags[name]
+	if elem == nil {
+		fmt.Println(QUICLI_ERROR_PREFIX, "failed to retrieve value for flag:", name)
+		os.Exit(92)
+	}
+	sv := elem.(*stringSliceValue)
+	return *sv.val
+}
+
 // Parse: parse the different flags and return the struct containing the flag values.
 // This is the core of the library. All the logic is within
 func (c *Cli) Parse() (config Config) {
@@ -93,57 +115,50 @@ func (c *Cli) Parse() (config Config) {
 	wUsage := new(tabwriter.Writer)
 	wUsage.Init(usage, 2, 8, 1, '\t', 1)
 	var shorts []string
-	config.Flags = make(map[string]interface{})
+	config.Flags = make(map[string]any)
+	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 
-	//Description
-	// usage += c.Description + "\n\nUsage: " + c.Usage + "\n\n"
 	fmt.Fprintf(wUsage, color.Yellow(c.Description)+"\n\nUsage: "+c.Usage+"\n\n")
 
-	//flags
-	fp := c.Flags
-	for i := 0; i < len(fp); i++ {
-		flag := fp[i]
-		// prepation checks
-		if len(flag.Name) == 0 {
-			fmt.Println(QUICLI_ERROR_PREFIX + "empty flag name defintion")
+	for i := 0; i < len(c.Flags); i++ {
+		f := c.Flags[i]
+		if len(f.Name) == 0 {
+			fmt.Println(QUICLI_ERROR_PREFIX + "empty flag name definition")
 			os.Exit(2)
 		}
-		//check Default => if no value provided assume it is a bool flag
-		if flag.Default == nil {
-			flag.Default = false
+		if f.Default == nil {
+			f.Default = false
 		}
-
-		switch flag.Default.(type) {
+		switch f.Default.(type) {
 		case int:
-			createIntFlag(config, flag, &shorts, wUsage)
+			createIntFlag(config, f, &shorts, wUsage, fs)
 		case string:
-			createStringFlag(config, flag, &shorts, wUsage)
+			createStringFlag(config, f, &shorts, wUsage, fs)
 		case bool:
-			createBoolFlag(config, flag, &shorts, wUsage)
+			createBoolFlag(config, f, &shorts, wUsage, fs)
 		case float64:
-			createFloatFlag(config, flag, &shorts, wUsage)
-			//todo: add float64;multiple value
+			createFloatFlag(config, f, &shorts, wUsage, fs)
+		case []string:
+			createStringSliceFlag(config, f, &shorts, wUsage, fs)
 		default:
-			fmt.Println(QUICLI_ERROR_PREFIX+"Unknown flag type:", flag.Default)
+			fmt.Println(QUICLI_ERROR_PREFIX+"Unknown flag type:", f.Default)
 			os.Exit(2)
 		}
 	}
 	fmt.Fprintf(wUsage, "\nUse \""+color.Yellow(os.Args[0])+" --help\" for more information about the command.\n")
 
-	//cheat sheet pt1
 	var cheatSheet bool
 	if len(c.CheatSheet) > 0 {
 		fmt.Fprintf(wUsage, "\nSee command examples with \""+color.Yellow(os.Args[0])+" --cheat-sheet\"\n")
-		flag.BoolVar(&cheatSheet, "cheat-sheet", false, "print cheat sheet")
-		flag.BoolVar(&cheatSheet, "cs", false, "print cheat sheet")
+		fs.BoolVar(&cheatSheet, "cheat-sheet", false, "print cheat sheet")
+		fs.BoolVar(&cheatSheet, "cs", false, "print cheat sheet")
 	}
 
 	wUsage.Flush()
-	flag.Usage = func() { fmt.Print(usage.String()) }
-	flag.Parse()
-	config.Args = flag.Args()
+	fs.Usage = func() { fmt.Print(usage.String()) }
+	fs.Parse(os.Args[1:])
+	config.Args = fs.Args()
 
-	//cheat sheet pt2
 	if len(c.CheatSheet) > 0 && cheatSheet {
 		c.PrintCheatSheet()
 		os.Exit(0)
@@ -187,97 +202,3 @@ func (c *Cli) PrintCheatSheet() {
 	}
 }
 
-// createIntFlag: create a flag of type int and adapt help message accordingly
-func createIntFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer) {
-	name := f.Name
-	shortName := name[0:1]
-	var intPtr int
-	flag.IntVar(&intPtr, name, int(reflect.ValueOf(f.Default).Int()), f.Description)
-	if !stringSlice.Contains(*shorts, shortName) && !f.NoShortName {
-		flag.IntVar(&intPtr, shortName, int(reflect.ValueOf(f.Default).Int()), f.Description)
-		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, shortName))
-		cfg.Flags[shortName] = &intPtr
-		*shorts = append(*shorts, shortName)
-	} else {
-		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, ""))
-	}
-	cfg.Flags[name] = &intPtr
-}
-
-// createStringFlag: create a flag of type string and adapt help message accordingly
-func createStringFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer) {
-	name := f.Name
-	shortName := name[0:1]
-	var strPtr string
-	flag.StringVar(&strPtr, name, string(reflect.ValueOf(f.Default).String()), f.Description)
-	if !stringSlice.Contains(*shorts, shortName) && !f.NoShortName {
-		flag.StringVar(&strPtr, shortName, string(reflect.ValueOf(f.Default).String()), f.Description)
-		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, shortName))
-		cfg.Flags[shortName] = &strPtr
-		*shorts = append(*shorts, shortName)
-	} else {
-		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, ""))
-	}
-	cfg.Flags[name] = &strPtr
-}
-
-// createBoolFlag: create a flag of type bool and adapt help message accordingly
-func createBoolFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer) {
-	name := f.Name
-	shortName := name[0:1]
-	var bPtr bool
-	flag.BoolVar(&bPtr, name, bool(reflect.ValueOf(f.Default).Bool()), f.Description)
-	cfg.Flags[name] = &bPtr
-	if !stringSlice.Contains(*shorts, shortName) && !f.NoShortName {
-		flag.BoolVar(&bPtr, shortName, bool(reflect.ValueOf(f.Default).Bool()), f.Description)
-		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, shortName))
-		cfg.Flags[shortName] = &bPtr
-		*shorts = append(*shorts, shortName)
-	} else {
-		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, ""))
-	}
-	cfg.Flags[name] = &bPtr
-}
-
-// createFloatFlag: create a flag of type float64 and adapt help message accordingly
-func createFloatFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer) {
-	name := f.Name
-	shortName := name[0:1]
-	var floatPtr float64
-	flag.Float64Var(&floatPtr, name, float64(reflect.ValueOf(f.Default).Float()), f.Description)
-	cfg.Flags[name] = &floatPtr
-	if !stringSlice.Contains(*shorts, shortName) && !f.NoShortName {
-		flag.Float64Var(&floatPtr, shortName, float64(reflect.ValueOf(f.Default).Float()), f.Description)
-		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, shortName))
-		cfg.Flags[shortName] = &floatPtr
-		*shorts = append(*shorts, shortName)
-	} else {
-		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, ""))
-	}
-	cfg.Flags[name] = &floatPtr
-}
-
-// getFlagLine: return the string representing the flag line in help message. If short is empty, only long will be include in string
-func getFlagLine(description string, defaultValue interface{}, long string, short string) (line string) {
-	defaultValueStr := ". (default: "
-	switch defaultValue.(type) {
-	case int:
-		defaultValueStr += strconv.Itoa(int(reflect.ValueOf(defaultValue).Int())) + ")\n"
-	case string:
-		defaultValueStr += "\"" + string(reflect.ValueOf(defaultValue).String()) + "\")\n"
-	case bool:
-		defaultValueStr += strconv.FormatBool(reflect.ValueOf(defaultValue).Bool()) + ")\n"
-	case float64:
-		defaultValueStr += strconv.FormatFloat(float64(reflect.ValueOf(defaultValue).Float()), 'f', -1, 64) + ")\n"
-	default:
-		fmt.Println(QUICLI_ERROR_PREFIX+"Unknown type for default value:", defaultValue)
-		os.Exit(2)
-	}
-
-	if short == "" {
-		line = "--" + long + "\t\t\t" + description + defaultValueStr
-	} else {
-		line = "--" + long + "\t-" + short + "\t\t" + description + defaultValueStr
-	}
-	return line
-}
