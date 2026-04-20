@@ -188,6 +188,12 @@ func (c *Cli) RunWithSubcommand() {
 		fs.Parse(os.Args[2:])
 	}
 	config.Args = fs.Args()
+	allFlags := c.Flags
+	if !isRootCommand(c.Subcommands) {
+		sub := getSubcommandByName(c.Subcommands, os.Args[1])
+		allFlags = append(allFlags, sub.Flags...)
+	}
+	applyEnvVars(allFlags, fs)
 
 	//cheat sheet pt2
 	if len(c.CheatSheet) > 0 && cheatSheet {

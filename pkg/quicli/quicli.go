@@ -158,6 +158,7 @@ func (c *Cli) Parse() (config Config) {
 	fs.Usage = func() { fmt.Print(usage.String()) }
 	fs.Parse(os.Args[1:])
 	config.Args = fs.Args()
+	applyEnvVars(c.Flags, fs)
 
 	if len(c.CheatSheet) > 0 && cheatSheet {
 		c.PrintCheatSheet()
