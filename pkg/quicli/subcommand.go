@@ -126,6 +126,12 @@ func (c *Cli) RunWithSubcommand() {
 			} else if len(os.Args) > 1 && f.isForSubcommand(os.Args[1]) {
 				createFloatFlag(config, f, &shorts, wUsage, fs)
 			}
+		case []string:
+			if isRootCommand(c.Subcommands) && !f.NotForRootCommand {
+				createStringSliceFlag(config, f, &shorts, wUsage, fs)
+			} else if len(os.Args) > 1 && f.isForSubcommand(os.Args[1]) {
+				createStringSliceFlag(config, f, &shorts, wUsage, fs)
+			}
 		default:
 			fmt.Println(QUICLI_ERROR_PREFIX+"Unknown flag type:", f.Default)
 			os.Exit(2)

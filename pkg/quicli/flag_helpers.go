@@ -89,6 +89,26 @@ func createFloatFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Wri
 	cfg.Flags[name] = &floatPtr
 }
 
+func createStringSliceFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer, fs *flag.FlagSet) {
+	name := f.Name
+	shortName := f.ShortName
+	if shortName == "" {
+		shortName = name[0:1]
+	}
+	val := []string{}
+	sv := &stringSliceValue{val: &val}
+	fs.Var(sv, name, f.Description)
+	if !stringSlice.Contains(*shorts, shortName) && !f.NoShortName {
+		fs.Var(sv, shortName, f.Description)
+		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, shortName))
+		cfg.Flags[shortName] = sv
+		*shorts = append(*shorts, shortName)
+	} else {
+		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, ""))
+	}
+	cfg.Flags[name] = sv
+}
+
 // getFlagLine returns the help line for a flag.
 func getFlagLine(description string, defaultValue any, long string, short string) string {
 	defaultStr := ". (default: "

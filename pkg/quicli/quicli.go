@@ -97,6 +97,17 @@ func (c Config) GetFloatFlag(name string) float64 {
 	return *f
 }
 
+// GetStringSliceFlag returns the []string value of a string slice flag.
+func (c Config) GetStringSliceFlag(name string) []string {
+	elem := c.Flags[name]
+	if elem == nil {
+		fmt.Println(QUICLI_ERROR_PREFIX, "failed to retrieve value for flag:", name)
+		os.Exit(92)
+	}
+	sv := elem.(*stringSliceValue)
+	return *sv.val
+}
+
 // Parse: parse the different flags and return the struct containing the flag values.
 // This is the core of the library. All the logic is within
 func (c *Cli) Parse() (config Config) {
@@ -127,6 +138,8 @@ func (c *Cli) Parse() (config Config) {
 			createBoolFlag(config, f, &shorts, wUsage, fs)
 		case float64:
 			createFloatFlag(config, f, &shorts, wUsage, fs)
+		case []string:
+			createStringSliceFlag(config, f, &shorts, wUsage, fs)
 		default:
 			fmt.Println(QUICLI_ERROR_PREFIX+"Unknown flag type:", f.Default)
 			os.Exit(2)

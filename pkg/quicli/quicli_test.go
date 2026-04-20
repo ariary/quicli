@@ -38,6 +38,20 @@ func TestFlagCustomShortName(t *testing.T) {
 	}
 }
 
+func TestStringSliceFlag(t *testing.T) {
+	defer setArgs([]string{"prog", "--file", "a", "--file", "b,c"})()
+	cli := Cli{
+		Usage:       "prog [flags]",
+		Description: "test",
+		Flags:       Flags{{Name: "file", Default: []string{}, Description: "files"}},
+	}
+	cfg := cli.Parse()
+	got := cfg.GetStringSliceFlag("file")
+	if len(got) != 3 || got[0] != "a" || got[1] != "b" || got[2] != "c" {
+		t.Errorf("GetStringSliceFlag: got %v, want [a b c]", got)
+	}
+}
+
 func TestParseDoesNotLeakGlobalState(t *testing.T) {
 	defer setArgs([]string{"prog", "--count", "1"})()
 	cli := Cli{
