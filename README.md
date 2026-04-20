@@ -55,10 +55,10 @@ quicli.Run(quicli.Cli{Usage:"SayToTheWorld [flags]",Description: "Say Hello... o
 		Description: "Say Hello... or not. If you want to make the world aware of it you also could",
 		Flags: quicli.Flags{
 			{Name: "count", Default: 1, Description: "how many times I want to say it. Sometimes repetition is the key"},
-			{Name: "foreground", Description: "change foreground background", ForSubcommand: quicli.SubcommandSet{"color"}},
+			{Name: "foreground", Description: "change foreground background", SharedSubcommand: quicli.SubcommandSet{"color"}},
 			{Name: "say", Default: "hello", Description: "say something. If you are polite start with a greeting"},
 			{Name: "world", Description: "announce it to the world"},
-			{Name: "surprise", Description: "you will see my friend", ForSubcommand: quicli.SubcommandSet{"toto", "color"}, NotForRootCommand: true},
+			{Name: "surprise", Description: "you will see my friend", SharedSubcommand: quicli.SubcommandSet{"toto", "color"}, NotForRootCommand: true},
 		},
 		Function: Main,
 		Subcommands: quicli.Subcommands{
@@ -72,9 +72,36 @@ quicli.Run(quicli.Cli{Usage:"SayToTheWorld [flags]",Description: "Say Hello... o
 
 ### Use flag values in code
 ```golang
-cfg.GetIntFlag("count") // get the --count flag value
-// or alternatively
-cfg.GetIntFlag("c")
+cfg.GetIntFlag("count")    // --count  (int)
+cfg.GetStringFlag("say")   // --say    (string)
+cfg.GetBoolFlag("world")   // --world  (bool)
+cfg.GetFloatFlag("ratio")  // --ratio  (float64)
+cfg.GetStringSliceFlag("tags") // --tags a,b --tags c  ([]string)
+// or use the short name: cfg.GetIntFlag("c")
+```
+
+**Custom short name** — override the auto-derived first letter:
+```golang
+{Name: "config", ShortName: "C", Default: "", Description: "config file"}
+// registers --config and -C
+```
+
+**Per-subcommand exclusive flags** — flags that only exist for one subcommand:
+```golang
+Subcommands: quicli.Subcommands{
+    {
+        Name: "push", Description: "push changes", Function: Push,
+        Flags: quicli.Flags{
+            {Name: "force", Description: "force push"},
+        },
+    },
+},
+```
+
+**Typo detection** — if a user types an unknown subcommand, quicli automatically suggests the closest match:
+```
+$ mytool pish
+quicli error: unknown subcommand 'pish', did you mean 'push'?
 ```
 
 Get more  [examples](examples/)
