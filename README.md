@@ -104,6 +104,37 @@ $ mytool pish
 quicli error: unknown subcommand 'pish', did you mean 'push'?
 ```
 
+### Env vars
+
+Every flag automatically reads from an env var as fallback before using the default.
+Auto-derived name: `PROGNAME_FLAGNAME` (uppercase, non-alphanumeric → `_`).
+
+```bash
+SAY_HELLO_COUNT=5 ./say-hello   # same as --count 5
+```
+
+Override the env var name per flag:
+```golang
+{Name: "token", Default: "", Description: "API token", EnvVar: "MY_API_TOKEN"}
+```
+
+Opt a flag out of env var lookup:
+```golang
+{Name: "secret", Default: "", Description: "...", EnvVar: "-"}
+```
+
+The env var name is shown in help output: `(default: 0) [env: SAY_HELLO_COUNT]`
+
+### Shell completion
+
+Every CLI built with quicli gets `--completion <shell>` for free:
+
+```bash
+./mycli --completion bash >> ~/.bash_completion
+./mycli --completion zsh  > ~/.zsh/completions/_mycli
+./mycli --completion fish > ~/.config/fish/completions/mycli.fish
+```
+
 Get more  [examples](examples/)
 
 ### Disclaimer
