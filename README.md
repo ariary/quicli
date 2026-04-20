@@ -2,6 +2,32 @@
 ### Build CLI in one line
 <sup>..or two</sup>
 
+### Zero-struct — the cligen way
+
+Define a struct, tag the fields, pass a function:
+
+```golang
+type Opts struct {
+    Count int    `cli:"how many times I want to say it" default:"1"`
+    Say   string `cli:"say something"                   default:"hello"`
+    World bool   `cli:"announce it to the world"`
+}
+
+func main() {
+    quicli.RunFunc("SayToTheWorld [flags]", "Say Hello...", func(o Opts) {
+        for i := 0; i < o.Count; i++ {
+            if o.World { fmt.Print("Message for the world: ") }
+            fmt.Println(o.Say)
+        }
+    })
+}
+```
+
+Supported field types: `int`, `string`, `bool`, `float64`, `[]string`.
+Tags: `cli:"desc"` (required), `default:"val"`, `short:"x"`, `env:"VAR"`.
+Untagged fields are ignored — safe to mix CLI and non-CLI fields in the same struct.
+
+### Cli struct — for subcommands and full control
 
 ```golang
 cli := quicli.Cli{Usage:"SayToTheWorld [flags]",Description: "Say Hello... or not. If you want to make the world aware of it you also could",Flags: quicli.Flags{{Name: "count", Default: 1, Description: "how many times I want to say it. Sometimes repetition is the key"},{Name: "say", Default: "hello", Description: "say something. If you are polite start with a greeting"},{Name: "world", Description: "announce it to the world"},},}
