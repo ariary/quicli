@@ -105,57 +105,47 @@ func (c *Cli) Parse() (config Config) {
 	wUsage.Init(usage, 2, 8, 1, '\t', 1)
 	var shorts []string
 	config.Flags = make(map[string]any)
+	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 
-	//Description
-	// usage += c.Description + "\n\nUsage: " + c.Usage + "\n\n"
 	fmt.Fprintf(wUsage, color.Yellow(c.Description)+"\n\nUsage: "+c.Usage+"\n\n")
 
-	//flags
-	fs := flag.CommandLine
-	fp := c.Flags
-	for i := 0; i < len(fp); i++ {
-		flag := fp[i]
-		// prepation checks
-		if len(flag.Name) == 0 {
-			fmt.Println(QUICLI_ERROR_PREFIX + "empty flag name defintion")
+	for i := 0; i < len(c.Flags); i++ {
+		f := c.Flags[i]
+		if len(f.Name) == 0 {
+			fmt.Println(QUICLI_ERROR_PREFIX + "empty flag name definition")
 			os.Exit(2)
 		}
-		//check Default => if no value provided assume it is a bool flag
-		if flag.Default == nil {
-			flag.Default = false
+		if f.Default == nil {
+			f.Default = false
 		}
-
-		switch flag.Default.(type) {
+		switch f.Default.(type) {
 		case int:
-			createIntFlag(config, flag, &shorts, wUsage, fs)
+			createIntFlag(config, f, &shorts, wUsage, fs)
 		case string:
-			createStringFlag(config, flag, &shorts, wUsage, fs)
+			createStringFlag(config, f, &shorts, wUsage, fs)
 		case bool:
-			createBoolFlag(config, flag, &shorts, wUsage, fs)
+			createBoolFlag(config, f, &shorts, wUsage, fs)
 		case float64:
-			createFloatFlag(config, flag, &shorts, wUsage, fs)
-			//todo: add float64;multiple value
+			createFloatFlag(config, f, &shorts, wUsage, fs)
 		default:
-			fmt.Println(QUICLI_ERROR_PREFIX+"Unknown flag type:", flag.Default)
+			fmt.Println(QUICLI_ERROR_PREFIX+"Unknown flag type:", f.Default)
 			os.Exit(2)
 		}
 	}
 	fmt.Fprintf(wUsage, "\nUse \""+color.Yellow(os.Args[0])+" --help\" for more information about the command.\n")
 
-	//cheat sheet pt1
 	var cheatSheet bool
 	if len(c.CheatSheet) > 0 {
 		fmt.Fprintf(wUsage, "\nSee command examples with \""+color.Yellow(os.Args[0])+" --cheat-sheet\"\n")
-		flag.BoolVar(&cheatSheet, "cheat-sheet", false, "print cheat sheet")
-		flag.BoolVar(&cheatSheet, "cs", false, "print cheat sheet")
+		fs.BoolVar(&cheatSheet, "cheat-sheet", false, "print cheat sheet")
+		fs.BoolVar(&cheatSheet, "cs", false, "print cheat sheet")
 	}
 
 	wUsage.Flush()
-	flag.Usage = func() { fmt.Print(usage.String()) }
-	flag.Parse()
-	config.Args = flag.Args()
+	fs.Usage = func() { fmt.Print(usage.String()) }
+	fs.Parse(os.Args[1:])
+	config.Args = fs.Args()
 
-	//cheat sheet pt2
 	if len(c.CheatSheet) > 0 && cheatSheet {
 		c.PrintCheatSheet()
 		os.Exit(0)

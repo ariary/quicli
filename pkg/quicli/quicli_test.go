@@ -37,3 +37,19 @@ func TestFlagCustomShortName(t *testing.T) {
 		t.Errorf("custom ShortName: got %d, want 42", got)
 	}
 }
+
+func TestParseDoesNotLeakGlobalState(t *testing.T) {
+	defer setArgs([]string{"prog", "--count", "1"})()
+	cli := Cli{
+		Usage:       "prog [flags]",
+		Description: "test",
+		Flags:       Flags{{Name: "count", Default: 0, Description: "count"}},
+	}
+	_ = cli.Parse()
+
+	os.Args = []string{"prog", "--count", "2"}
+	cfg2 := cli.Parse()
+	if got := cfg2.GetIntFlag("count"); got != 2 {
+		t.Errorf("second Parse: got %d, want 2", got)
+	}
+}
