@@ -57,9 +57,16 @@ func (c *Cli) RunWithSubcommand() {
 			fmt.Fprintf(wUsage, color.Yellow(c.Description)+"\n\nUsage: "+c.Usage+"\n\n")
 		}
 	} else {
-		//TODO: check if subcommand is misspelled
 		sub := getSubcommandByName(c.Subcommands, os.Args[1])
 		fmt.Fprintf(wUsage, c.Description+"\n\nUsage: "+c.Usage+"\n"+"Command "+color.Cyan(sub.Name)+": "+sub.Description+"\n\n")
+	}
+
+	// misspelled subcommand detection
+	if isRootCommand(c.Subcommands) && len(c.Subcommands) > 0 && len(os.Args) > 1 && !strings.HasPrefix(os.Args[1], "-") {
+		if closest := findClosestSubcommand(c.Subcommands, os.Args[1]); closest != "" {
+			fmt.Println(QUICLI_ERROR_PREFIX + "unknown subcommand '" + os.Args[1] + "', did you mean '" + closest + "'?")
+			os.Exit(2)
+		}
 	}
 
 	//Subcommands preliminary checks
