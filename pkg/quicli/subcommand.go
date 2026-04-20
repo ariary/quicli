@@ -175,9 +175,12 @@ func (c *Cli) RunWithSubcommand() {
 	var cheatSheet bool
 	if len(c.CheatSheet) > 0 {
 		fmt.Fprintf(wUsage, "\nSee command examples with \""+os.Args[0]+" --cheat-sheet\"\n")
-		flag.BoolVar(&cheatSheet, "cheat-sheet", false, "print cheat sheet")
-		flag.BoolVar(&cheatSheet, "cs", false, "print cheat sheet")
+		fs.BoolVar(&cheatSheet, "cheat-sheet", false, "print cheat sheet")
+		fs.BoolVar(&cheatSheet, "cs", false, "print cheat sheet")
 	}
+
+	var completionShell string
+	fs.StringVar(&completionShell, "completion", "", "generate shell completion script (bash, zsh, fish)")
 
 	wUsage.Flush()
 	// Parse
@@ -194,6 +197,16 @@ func (c *Cli) RunWithSubcommand() {
 		allFlags = append(allFlags, sub.Flags...)
 	}
 	applyEnvVars(allFlags, fs)
+
+	if completionShell != "" {
+		script, err := generateCompletion(c, completionShell)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, QUICLI_ERROR_PREFIX+err.Error())
+			os.Exit(1)
+		}
+		fmt.Print(script)
+		os.Exit(0)
+	}
 
 	//cheat sheet pt2
 	if len(c.CheatSheet) > 0 && cheatSheet {
