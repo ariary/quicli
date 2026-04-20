@@ -1,0 +1,26 @@
+package quicli
+
+import (
+	"os"
+	"testing"
+)
+
+// setArgs temporarily overrides os.Args and returns a restore func.
+func setArgs(args []string) func() {
+	old := os.Args
+	os.Args = args
+	return func() { os.Args = old }
+}
+
+func TestGetFloatFlag(t *testing.T) {
+	defer setArgs([]string{"prog", "--ratio", "3.14"})()
+	cli := Cli{
+		Usage:       "prog [flags]",
+		Description: "test",
+		Flags:       Flags{{Name: "ratio", Default: float64(0), Description: "a ratio"}},
+	}
+	cfg := cli.Parse()
+	if got := cfg.GetFloatFlag("ratio"); got != 3.14 {
+		t.Errorf("GetFloatFlag: got %f, want 3.14", got)
+	}
+}

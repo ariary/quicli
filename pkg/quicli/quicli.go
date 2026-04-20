@@ -86,6 +86,17 @@ func (c Config) GetBoolFlag(name string) bool {
 	return *boolean
 }
 
+// GetFloatFlag returns the float64 value of a float64 flag.
+func (c Config) GetFloatFlag(name string) float64 {
+	elem := c.Flags[name]
+	if elem == nil {
+		fmt.Println(QUICLI_ERROR_PREFIX, "failed to retrieve value for flag:", name)
+		os.Exit(92)
+	}
+	f := reflect.ValueOf(elem).Interface().(*float64)
+	return *f
+}
+
 // Parse: parse the different flags and return the struct containing the flag values.
 // This is the core of the library. All the logic is within
 func (c *Cli) Parse() (config Config) {
