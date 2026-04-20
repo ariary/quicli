@@ -86,8 +86,8 @@ func (c *Cli) RunWithSubcommand() {
 		if f.Default == nil {
 			f.Default = false
 		}
-		for i := 0; i < len(f.ForSubcommand); i++ {
-			subcommandName := f.ForSubcommand[i]
+		for i := 0; i < len(f.SharedSubcommand); i++ {
+			subcommandName := f.SharedSubcommand[i]
 			if getSubcommandByName(c.Subcommands, subcommandName).Name == "" {
 				fmt.Println(QUICLI_ERROR_PREFIX+"subcommand", subcommandName, "specified for flag", f.Name, "is not defined")
 				os.Exit(2)
@@ -96,14 +96,14 @@ func (c *Cli) RunWithSubcommand() {
 
 		// before other stuff add subcommand aliases for the flag..
 		var flagForSub SubcommandSet
-		for i := 0; i < len(f.ForSubcommand); i++ {
-			subcommand := getSubcommandByName(c.Subcommands, f.ForSubcommand[i])
+		for i := 0; i < len(f.SharedSubcommand); i++ {
+			subcommand := getSubcommandByName(c.Subcommands, f.SharedSubcommand[i])
 			if subcommand.Aliases != nil {
 				flagForSub = append(flagForSub, subcommand.Aliases.ToSlice()...)
 			}
 
 		}
-		f.ForSubcommand = append(f.ForSubcommand, flagForSub...)
+		f.SharedSubcommand = append(f.SharedSubcommand, flagForSub...)
 
 		switch f.Default.(type) {
 		case int:
@@ -194,8 +194,8 @@ func getSubcommandByName(subcommands Subcommands, subcommandName string) (sub Su
 
 // isForSubcommand: return true if the subcommand is concerned by the flag
 func (f *Flag) isForSubcommand(subcommandName string) bool {
-	for i := 0; i < len(f.ForSubcommand); i++ {
-		if subcommandName == f.ForSubcommand[i] { // look subcommand name
+	for i := 0; i < len(f.SharedSubcommand); i++ {
+		if subcommandName == f.SharedSubcommand[i] { // look subcommand name
 			return true
 		}
 	}

@@ -24,7 +24,7 @@ type Flag struct {
 	NoShortName       bool
 	ShortName         string        // overrides auto first-letter derivation
 	NotForRootCommand bool
-	ForSubcommand     SubcommandSet
+	SharedSubcommand  SubcommandSet
 	EnvVar            string        // env var override (activated in PR2)
 }
 
