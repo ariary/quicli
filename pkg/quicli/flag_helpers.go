@@ -1,0 +1,114 @@
+package quicli
+
+import (
+	"flag"
+	"fmt"
+	"os"
+	"reflect"
+	"strconv"
+	"text/tabwriter"
+
+	stringSlice "github.com/ariary/go-utils/pkg/stringSlice"
+)
+
+func createIntFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer, fs *flag.FlagSet) {
+	name := f.Name
+	shortName := f.ShortName
+	if shortName == "" {
+		shortName = name[0:1]
+	}
+	var intPtr int
+	fs.IntVar(&intPtr, name, int(reflect.ValueOf(f.Default).Int()), f.Description)
+	if !stringSlice.Contains(*shorts, shortName) && !f.NoShortName {
+		fs.IntVar(&intPtr, shortName, int(reflect.ValueOf(f.Default).Int()), f.Description)
+		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, shortName))
+		cfg.Flags[shortName] = &intPtr
+		*shorts = append(*shorts, shortName)
+	} else {
+		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, ""))
+	}
+	cfg.Flags[name] = &intPtr
+}
+
+func createStringFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer, fs *flag.FlagSet) {
+	name := f.Name
+	shortName := f.ShortName
+	if shortName == "" {
+		shortName = name[0:1]
+	}
+	var strPtr string
+	fs.StringVar(&strPtr, name, reflect.ValueOf(f.Default).String(), f.Description)
+	if !stringSlice.Contains(*shorts, shortName) && !f.NoShortName {
+		fs.StringVar(&strPtr, shortName, reflect.ValueOf(f.Default).String(), f.Description)
+		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, shortName))
+		cfg.Flags[shortName] = &strPtr
+		*shorts = append(*shorts, shortName)
+	} else {
+		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, ""))
+	}
+	cfg.Flags[name] = &strPtr
+}
+
+func createBoolFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer, fs *flag.FlagSet) {
+	name := f.Name
+	shortName := f.ShortName
+	if shortName == "" {
+		shortName = name[0:1]
+	}
+	var bPtr bool
+	fs.BoolVar(&bPtr, name, reflect.ValueOf(f.Default).Bool(), f.Description)
+	cfg.Flags[name] = &bPtr
+	if !stringSlice.Contains(*shorts, shortName) && !f.NoShortName {
+		fs.BoolVar(&bPtr, shortName, reflect.ValueOf(f.Default).Bool(), f.Description)
+		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, shortName))
+		cfg.Flags[shortName] = &bPtr
+		*shorts = append(*shorts, shortName)
+	} else {
+		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, ""))
+	}
+	cfg.Flags[name] = &bPtr
+}
+
+func createFloatFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer, fs *flag.FlagSet) {
+	name := f.Name
+	shortName := f.ShortName
+	if shortName == "" {
+		shortName = name[0:1]
+	}
+	var floatPtr float64
+	fs.Float64Var(&floatPtr, name, reflect.ValueOf(f.Default).Float(), f.Description)
+	cfg.Flags[name] = &floatPtr
+	if !stringSlice.Contains(*shorts, shortName) && !f.NoShortName {
+		fs.Float64Var(&floatPtr, shortName, reflect.ValueOf(f.Default).Float(), f.Description)
+		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, shortName))
+		cfg.Flags[shortName] = &floatPtr
+		*shorts = append(*shorts, shortName)
+	} else {
+		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, ""))
+	}
+	cfg.Flags[name] = &floatPtr
+}
+
+// getFlagLine returns the help line for a flag.
+func getFlagLine(description string, defaultValue any, long string, short string) string {
+	defaultStr := ". (default: "
+	switch v := defaultValue.(type) {
+	case int:
+		defaultStr += strconv.Itoa(v) + ")\n"
+	case string:
+		defaultStr += `"` + v + `")` + "\n"
+	case bool:
+		defaultStr += strconv.FormatBool(v) + ")\n"
+	case float64:
+		defaultStr += strconv.FormatFloat(v, 'f', -1, 64) + ")\n"
+	case []string:
+		defaultStr += "[])\n"
+	default:
+		fmt.Println(QUICLI_ERROR_PREFIX+"Unknown type for default value:", defaultValue)
+		os.Exit(2)
+	}
+	if short == "" {
+		return "--" + long + "\t\t\t" + description + defaultStr
+	}
+	return "--" + long + "\t-" + short + "\t\t" + description + defaultStr
+}

@@ -4,12 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"reflect"
 	"strings"
 	"text/tabwriter"
 
 	"github.com/ariary/go-utils/pkg/color"
-	stringSlice "github.com/ariary/go-utils/pkg/stringSlice"
 	mapset "github.com/deckarep/golang-set/v2"
 )
 
@@ -108,27 +106,27 @@ func (c *Cli) RunWithSubcommand() {
 		switch f.Default.(type) {
 		case int:
 			if isRootCommand(c.Subcommands) && !f.NotForRootCommand {
-				createIntFlagFs(config, f, &shorts, wUsage, fs)
+				createIntFlag(config, f, &shorts, wUsage, fs)
 			} else if len(os.Args) > 1 && f.isForSubcommand(os.Args[1]) {
-				createIntFlagFs(config, f, &shorts, wUsage, fs)
+				createIntFlag(config, f, &shorts, wUsage, fs)
 			}
 		case string:
 			if isRootCommand(c.Subcommands) && !f.NotForRootCommand {
-				createStringFlagFs(config, f, &shorts, wUsage, fs)
+				createStringFlag(config, f, &shorts, wUsage, fs)
 			} else if len(os.Args) > 1 && f.isForSubcommand(os.Args[1]) {
-				createStringFlagFs(config, f, &shorts, wUsage, fs)
+				createStringFlag(config, f, &shorts, wUsage, fs)
 			}
 		case bool:
 			if isRootCommand(c.Subcommands) && !f.NotForRootCommand {
-				createBoolFlagFs(config, f, &shorts, wUsage, fs)
+				createBoolFlag(config, f, &shorts, wUsage, fs)
 			} else if len(os.Args) > 1 && f.isForSubcommand(os.Args[1]) {
-				createBoolFlagFs(config, f, &shorts, wUsage, fs)
+				createBoolFlag(config, f, &shorts, wUsage, fs)
 			}
 		case float64:
 			if isRootCommand(c.Subcommands) && !f.NotForRootCommand {
-				createFloatFlagFs(config, f, &shorts, wUsage, fs)
+				createFloatFlag(config, f, &shorts, wUsage, fs)
 			} else if len(os.Args) > 1 && f.isForSubcommand(os.Args[1]) {
-				createFloatFlagFs(config, f, &shorts, wUsage, fs)
+				createFloatFlag(config, f, &shorts, wUsage, fs)
 			}
 		default:
 			fmt.Println(QUICLI_ERROR_PREFIX+"Unknown flag type:", f.Default)
@@ -200,84 +198,6 @@ func (f *Flag) isForSubcommand(subcommandName string) bool {
 		}
 	}
 	return false
-}
-
-func createIntFlagFs(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer, fs *flag.FlagSet) {
-	name := f.Name
-	shortName := f.ShortName
-	if shortName == "" {
-		shortName = name[0:1]
-	}
-	var intPtr int
-	fs.IntVar(&intPtr, name, int(reflect.ValueOf(f.Default).Int()), f.Description)
-	if !stringSlice.Contains(*shorts, shortName) && !f.NoShortName {
-		fs.IntVar(&intPtr, shortName, int(reflect.ValueOf(f.Default).Int()), f.Description)
-		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, shortName))
-		cfg.Flags[shortName] = &intPtr
-		*shorts = append(*shorts, shortName)
-	} else {
-		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, ""))
-	}
-	cfg.Flags[name] = &intPtr
-}
-
-func createStringFlagFs(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer, fs *flag.FlagSet) {
-	name := f.Name
-	shortName := f.ShortName
-	if shortName == "" {
-		shortName = name[0:1]
-	}
-	var strPtr string
-	fs.StringVar(&strPtr, name, string(reflect.ValueOf(f.Default).String()), f.Description)
-	if !stringSlice.Contains(*shorts, shortName) && !f.NoShortName {
-		fs.StringVar(&strPtr, shortName, string(reflect.ValueOf(f.Default).String()), f.Description)
-		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, shortName))
-		cfg.Flags[shortName] = &strPtr
-		*shorts = append(*shorts, shortName)
-	} else {
-		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, ""))
-	}
-	cfg.Flags[name] = &strPtr
-}
-
-func createBoolFlagFs(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer, fs *flag.FlagSet) {
-	name := f.Name
-	shortName := f.ShortName
-	if shortName == "" {
-		shortName = name[0:1]
-	}
-	var bPtr bool
-	fs.BoolVar(&bPtr, name, bool(reflect.ValueOf(f.Default).Bool()), f.Description)
-	cfg.Flags[name] = &bPtr
-	if !stringSlice.Contains(*shorts, shortName) && !f.NoShortName {
-		fs.BoolVar(&bPtr, shortName, bool(reflect.ValueOf(f.Default).Bool()), f.Description)
-		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, shortName))
-		cfg.Flags[shortName] = &bPtr
-		*shorts = append(*shorts, shortName)
-	} else {
-		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, ""))
-	}
-	cfg.Flags[name] = &bPtr
-}
-
-func createFloatFlagFs(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer, fs *flag.FlagSet) {
-	name := f.Name
-	shortName := f.ShortName
-	if shortName == "" {
-		shortName = name[0:1]
-	}
-	var floatPtr float64
-	fs.Float64Var(&floatPtr, name, float64(reflect.ValueOf(f.Default).Float()), f.Description)
-	cfg.Flags[name] = &floatPtr
-	if !stringSlice.Contains(*shorts, shortName) && !f.NoShortName {
-		fs.Float64Var(&floatPtr, shortName, float64(reflect.ValueOf(f.Default).Float()), f.Description)
-		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, shortName))
-		cfg.Flags[shortName] = &floatPtr
-		*shorts = append(*shorts, shortName)
-	} else {
-		fmt.Fprintf(wUsage, getFlagLine(f.Description, f.Default, name, ""))
-	}
-	cfg.Flags[name] = &floatPtr
 }
 
 // checkSubcommandFunctionIsDefined: assert the subcommmand Function is filled, exit otherwise
