@@ -31,8 +31,6 @@ type Subcommands []Subcommand
 
 type SubcommandSet []string
 
-var AllAliases mapset.Set[string]
-
 // RunWithSubcommand: equivalent of Run function when cli has subcommand defined
 func (c *Cli) RunWithSubcommand() {
 	var config Config
@@ -67,8 +65,8 @@ func (c *Cli) RunWithSubcommand() {
 	//Subcommands preliminary checks
 	if len(c.Subcommands) > 0 {
 		checkSubcommandFunctionIsDefined(c)
-		AllAliases = mapset.NewSet[string]()
-		checkSubcommandAliasesUniqueness(c)
+		allAliases := mapset.NewSet[string]()
+		checkSubcommandAliasesUniqueness(c, allAliases)
 	}
 
 	//flags
@@ -211,14 +209,14 @@ func checkSubcommandFunctionIsDefined(c *Cli) {
 	}
 }
 
-// checkSubcommandFunctionIsDefined: assert the subcommmand Aliases are unique (ie not same alias for two different subcommands), exit otherwise
-func checkSubcommandAliasesUniqueness(c *Cli) {
+// checkSubcommandAliasesUniqueness: assert the subcommand Aliases are unique (ie not same alias for two different subcommands), exit otherwise
+func checkSubcommandAliasesUniqueness(c *Cli, allAliases mapset.Set[string]) {
 	for i := 0; i < len(c.Subcommands); i++ {
 		subcommandAliases := c.Subcommands[i].Aliases
 		if subcommandAliases != nil {
-			commonAliases := AllAliases.Intersect(subcommandAliases)
+			commonAliases := allAliases.Intersect(subcommandAliases)
 			if commonAliases.Cardinality() == 0 {
-				AllAliases.Append(subcommandAliases.ToSlice()...)
+				allAliases.Append(subcommandAliases.ToSlice()...)
 			} else {
 				fmt.Println(QUICLI_ERROR_PREFIX+"subcommand", c.Subcommands[i].Name, "define some already defined aliases ('", strings.Join(commonAliases.ToSlice(), ","), "')")
 				os.Exit(2)
