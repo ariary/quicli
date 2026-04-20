@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"text/tabwriter"
 
@@ -45,11 +46,10 @@ func (c *Cli) RunWithSubcommand() {
 	if isRootCommand(c.Subcommands) {
 		if len(c.Subcommands) > 0 {
 			subcommandSet := []string{}
-			for i := 0; i < len(c.Subcommands); i++ {
-				//to do check that there isn't duplicate: subcommandSet in set
-				subcommandSet = append(subcommandSet, c.Subcommands[i].Name) // add name
-				if c.Subcommands[i].Aliases != nil {                         //add aliases
-					subcommandSet = append(subcommandSet, c.Subcommands[i].Aliases.ToSlice()...)
+			for _, sub := range c.Subcommands {
+				subcommandSet = append(subcommandSet, sub.Name)
+				if sub.Aliases != nil {
+					subcommandSet = append(subcommandSet, sub.Aliases.ToSlice()...)
 				}
 			}
 			fmt.Fprintf(wUsage, color.Yellow(c.Description)+"\n\nUsage: "+c.Usage+"\nAvailable commands: "+strings.Join(subcommandSet, ", ")+"\n\n")
@@ -70,9 +70,7 @@ func (c *Cli) RunWithSubcommand() {
 	}
 
 	//flags
-	fp := c.Flags
-	for i := 0; i < len(fp); i++ {
-		f := fp[i]
+	for _, f := range c.Flags {
 		// prepation checks
 		if len(f.Name) == 0 {
 			fmt.Println(QUICLI_ERROR_PREFIX + "empty flag name defintion")
@@ -82,8 +80,7 @@ func (c *Cli) RunWithSubcommand() {
 		if f.Default == nil {
 			f.Default = false
 		}
-		for i := 0; i < len(f.SharedSubcommand); i++ {
-			subcommandName := f.SharedSubcommand[i]
+		for _, subcommandName := range f.SharedSubcommand {
 			if getSubcommandByName(c.Subcommands, subcommandName).Name == "" {
 				fmt.Println(QUICLI_ERROR_PREFIX+"subcommand", subcommandName, "specified for flag", f.Name, "is not defined")
 				os.Exit(2)
@@ -92,12 +89,11 @@ func (c *Cli) RunWithSubcommand() {
 
 		// before other stuff add subcommand aliases for the flag..
 		var flagForSub SubcommandSet
-		for i := 0; i < len(f.SharedSubcommand); i++ {
-			subcommand := getSubcommandByName(c.Subcommands, f.SharedSubcommand[i])
+		for _, scName := range f.SharedSubcommand {
+			subcommand := getSubcommandByName(c.Subcommands, scName)
 			if subcommand.Aliases != nil {
 				flagForSub = append(flagForSub, subcommand.Aliases.ToSlice()...)
 			}
-
 		}
 		f.SharedSubcommand = append(f.SharedSubcommand, flagForSub...)
 
@@ -140,8 +136,7 @@ func (c *Cli) RunWithSubcommand() {
 	// Register exclusive flags for the active subcommand
 	if !isRootCommand(c.Subcommands) {
 		sub := getSubcommandByName(c.Subcommands, os.Args[1])
-		for i := 0; i < len(sub.Flags); i++ {
-			f := sub.Flags[i]
+		for _, f := range sub.Flags {
 			if len(f.Name) == 0 {
 				fmt.Println(QUICLI_ERROR_PREFIX + "empty flag name definition in subcommand " + sub.Name)
 				os.Exit(2)
@@ -213,12 +208,12 @@ func isRootCommand(subcommands Subcommands) bool {
 
 // getSubcommandByName: return the subcommand with name (take into account aliases)
 func getSubcommandByName(subcommands Subcommands, subcommandName string) (sub Subcommand) {
-	for i := 0; i < len(subcommands); i++ {
-		if subcommandName == subcommands[i].Name {
-			return subcommands[i]
+	for _, s := range subcommands {
+		if subcommandName == s.Name {
+			return s
 		}
-		if subcommands[i].Aliases != nil && subcommands[i].Aliases.Contains(subcommandName) {
-			return subcommands[i]
+		if s.Aliases != nil && s.Aliases.Contains(subcommandName) {
+			return s
 		}
 	}
 	return sub
@@ -226,18 +221,12 @@ func getSubcommandByName(subcommands Subcommands, subcommandName string) (sub Su
 
 // isForSubcommand: return true if the subcommand is concerned by the flag
 func (f *Flag) isForSubcommand(subcommandName string) bool {
-	for i := 0; i < len(f.SharedSubcommand); i++ {
-		if subcommandName == f.SharedSubcommand[i] { // look subcommand name
-			return true
-		}
-	}
-	return false
+	return slices.Contains(f.SharedSubcommand, subcommandName)
 }
 
 // checkSubcommandFunctionIsDefined: assert the subcommmand Function is filled, exit otherwise
 func checkSubcommandFunctionIsDefined(c *Cli) {
-	for i := 0; i < len(c.Subcommands); i++ {
-		sub := c.Subcommands[i]
+	for _, sub := range c.Subcommands {
 		if sub.Function == nil {
 			fmt.Println(QUICLI_ERROR_PREFIX+"subcommand", sub.Name, "does not define mandatory 'Function' attribute")
 			os.Exit(2)
@@ -247,14 +236,13 @@ func checkSubcommandFunctionIsDefined(c *Cli) {
 
 // checkSubcommandAliasesUniqueness: assert the subcommand Aliases are unique (ie not same alias for two different subcommands), exit otherwise
 func checkSubcommandAliasesUniqueness(c *Cli, allAliases mapset.Set[string]) {
-	for i := 0; i < len(c.Subcommands); i++ {
-		subcommandAliases := c.Subcommands[i].Aliases
-		if subcommandAliases != nil {
-			commonAliases := allAliases.Intersect(subcommandAliases)
+	for _, sub := range c.Subcommands {
+		if sub.Aliases != nil {
+			commonAliases := allAliases.Intersect(sub.Aliases)
 			if commonAliases.Cardinality() == 0 {
-				allAliases.Append(subcommandAliases.ToSlice()...)
+				allAliases.Append(sub.Aliases.ToSlice()...)
 			} else {
-				fmt.Println(QUICLI_ERROR_PREFIX+"subcommand", c.Subcommands[i].Name, "define some already defined aliases ('", strings.Join(commonAliases.ToSlice(), ","), "')")
+				fmt.Println(QUICLI_ERROR_PREFIX+"subcommand", sub.Name, "define some already defined aliases ('", strings.Join(commonAliases.ToSlice(), ","), "')")
 				os.Exit(2)
 			}
 		}
