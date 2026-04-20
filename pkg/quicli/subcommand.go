@@ -42,7 +42,7 @@ func (c *Cli) RunWithSubcommand() {
 	wUsage := new(tabwriter.Writer)
 	wUsage.Init(usage, 2, 8, 1, '\t', 1)
 	var shorts []string
-	config.Flags = make(map[string]interface{})
+	config.Flags = make(map[string]any)
 	fs := flag.NewFlagSet("parser", flag.ExitOnError)
 
 	//Description

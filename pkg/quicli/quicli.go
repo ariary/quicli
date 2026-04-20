@@ -20,7 +20,7 @@ type Flag struct {
 	Name        string
 	Description string
 	//Default is use to determine the flag value type and must be defined
-	Default           interface{}
+	Default           any
 	NoShortName       bool
 	ShortName         string        // overrides auto first-letter derivation
 	NotForRootCommand bool
@@ -31,7 +31,7 @@ type Flag struct {
 type Flags []Flag
 
 type Config struct {
-	Flags map[string]interface{}
+	Flags map[string]any
 	Args  []string
 }
 
@@ -106,7 +106,7 @@ func (c *Cli) Parse() (config Config) {
 	wUsage := new(tabwriter.Writer)
 	wUsage.Init(usage, 2, 8, 1, '\t', 1)
 	var shorts []string
-	config.Flags = make(map[string]interface{})
+	config.Flags = make(map[string]any)
 
 	//Description
 	// usage += c.Description + "\n\nUsage: " + c.Usage + "\n\n"
@@ -283,7 +283,7 @@ func createFloatFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Wri
 }
 
 // getFlagLine: return the string representing the flag line in help message. If short is empty, only long will be include in string
-func getFlagLine(description string, defaultValue interface{}, long string, short string) (line string) {
+func getFlagLine(description string, defaultValue any, long string, short string) (line string) {
 	defaultValueStr := ". (default: "
 	switch defaultValue.(type) {
 	case int:
