@@ -1,221 +1,169 @@
 ## 🏃⌨️ quicli
-### Build CLI in one line
-<sup>..or two</sup>
+### Build CLI in Go without the ceremony
 
-### Zero-struct — the cligen way
+No init functions. No command registration. No flag pointers.
+Define your CLI in one expression *(or just tag a struct)*
 
-Define a struct, tag the fields, pass a function:
+Inspired by [nim's cligen](https://github.com/c-blake/cligen).
+
+---
+
+### The zero-boilerplate way
+
+Tag a struct, pass a function. Your flags are already in `Opts` Struct:
 
 ```golang
 type Opts struct {
-    Count int    `cli:"how many times I want to say it" default:"1"`
-    Say   string `cli:"say something"                   default:"hello"`
-    World bool   `cli:"announce it to the world"`
+    Count int      `cli:"how many times"    default:"1"`
+    Say   string   `cli:"what to say"       default:"hello"`
+    World bool     `cli:"announce it"`
+    Tags  []string `cli:"filter by tags"`
 }
 
 func main() {
-    quicli.RunFunc("say-hello [flags]", "Say Hello...", func(o Opts) {
+    quicli.RunFunc("say-hello [flags]", "Say Hello to the world", func(o Opts) {
         for i := 0; i < o.Count; i++ {
-            if o.World { fmt.Print("Message for the world: ") }
-            fmt.Println(o.Say)
+            msg := o.Say
+            if o.World { msg = "🌍 " + msg }
+            fmt.Println(msg)
         }
     })
 }
 ```
 
-This gives you:
 ```
-Say Hello...
+$ say-hello --help
+
+Say Hello to the world
 
 Usage: say-hello [flags]
 
---count  -c   how many times I want to say it. (default: 1) [env: SAY_HELLO_COUNT]
---say    -s   say something. (default: "hello") [env: SAY_HELLO_SAY]
---world  -w   announce it to the world. (default: false) [env: SAY_HELLO_WORLD]
+--count  -c   how many times. (default: 1) [env: SAY_HELLO_COUNT]
+--say    -s   what to say. (default: "hello") [env: SAY_HELLO_SAY]
+--world  -w   announce it. (default: false) [env: SAY_HELLO_WORLD]
+--tags   -t   filter by tags. (default: []) [env: SAY_HELLO_TAGS]
 
 Use "say-hello --help" for more information about the command.
 ```
 
 ```bash
-./say-hello --count 3 --say "hi"
-./say-hello -w
-SAY_HELLO_COUNT=5 ./say-hello          # env var fallback
-./say-hello --completion bash          # print bash completion script
+$ say-hello --count 3 --say "bonjour"
+$ say-hello -w
+$ SAY_HELLO_COUNT=5 say-hello          # env var, same as --count 5
+$ say-hello --completion zsh           # print zsh completion script
 ```
 
 Supported field types: `int`, `string`, `bool`, `float64`, `[]string`.
-Tags: `cli:"desc"` (required), `default:"val"`, `short:"x"`, `env:"VAR"`.
-Untagged fields are ignored — safe to mix CLI and non-CLI fields in the same struct.
+Tags: `cli:"desc"` · `default:"val"` · `short:"x"` · `env:"VAR"` (or `"-"` to opt out).
 
-### Cli struct — for subcommands and full control
+---
 
-```golang
-cli := quicli.Cli{Usage:"say-hello [flags]",Description: "Say Hello... or not. If you want to make the world aware of it you also could",Flags: quicli.Flags{{Name: "count", Default: 1, Description: "how many times I want to say it. Sometimes repetition is the key"},{Name: "say", Default: "hello", Description: "say something. If you are polite start with a greeting"},{Name: "world", Description: "announce it to the world"},},}
-cfg := cli.Parse()
-```
+### The one-liner way
 
-With this code you obtain the following help message:
-```
-Say Hello... or not. If you want to make the world aware of it you also could
-
-Usage: say-hello [flags]
-
---count  -c   how many times I want to say it. Sometimes repetition is the key. (default: 1) [env: SAY_HELLO_COUNT]
---say    -s   say something. If you are polite start with a greeting. (default: "hello") [env: SAY_HELLO_SAY]
---world  -w   announce it to the world. (default: false) [env: SAY_HELLO_WORLD]
-
-Use "say-hello --help" for more information about the command.
-```
-
-<details>
-    <summary>Pretty indented version</summary>
+Everything in one expression:
 
 ```golang
-cli := quicli.Cli{
-  Usage:       "say-hello [flags]",
-  Description: "Say Hello... or not. If you want to make the world aware of it you also could",
-  Flags: quicli.Flags{
-    {Name: "count", Default: 1, Description: "how many times I want to say it. Sometimes repetition is the key"},
-    {Name: "say", Default: "hello", Description: "say something. If you are polite start with a greeting"},
-    {Name: "world", Description: "announce it to the world"},
-  },
-}
-cfg := cli.Parse()
-```
-</details>
-
-<details>
-    <summary>Real one-liner (Parse and run)</summary>
-
-```golang
-quicli.Run(quicli.Cli{Usage:"say-hello [flags]",Description: "Say Hello... or not. If you want to make the world aware of it you also could",Flags: quicli.Flags{{Name: "count", Default: 1, Description: "how many times I want to say it. Sometimes repetition is the key"},{Name: "say", Default: "hello", Description: "say something. If you are polite start with a greeting"},{Name: "world", Description: "announce it to the world"},},Function: SayHello,})
-```
-</details>
-
-<details>
-    <summary>You want a subcommand pattern?! okay</summary>
-
-```golang
-cli := quicli.Cli{
-    Usage:       "say-hello [command] [flags]",
-    Description: "Say Hello... or not. If you want to make the world aware of it you also could",
+quicli.Run(quicli.Cli{
+    Usage:       "say-hello [flags]",
+    Description: "Say Hello to the world",
     Flags: quicli.Flags{
-        {Name: "count", Default: 1, Description: "how many times I want to say it. Sometimes repetition is the key"},
-        {Name: "foreground", Description: "change foreground color", SharedSubcommand: quicli.SubcommandSet{"color"}},
-        {Name: "say", Default: "hello", Description: "say something. If you are polite start with a greeting"},
-        {Name: "world", Description: "announce it to the world"},
-        {Name: "surprise", Description: "you will see my friend", SharedSubcommand: quicli.SubcommandSet{"toto", "color"}, NotForRootCommand: true},
+        {Name: "count", Default: 1,       Description: "how many times"},
+        {Name: "say",   Default: "hello", Description: "what to say"},
+        {Name: "world",                   Description: "announce it"},
     },
-    Function: Main,
+    Function: func(cfg quicli.Config) {
+        count := cfg.GetIntFlag("count")
+        say   := cfg.GetStringFlag("say")
+        world := cfg.GetBoolFlag("world")
+        for i := 0; i < count; i++ {
+            if world { fmt.Print("🌍 ") }
+            fmt.Println(say)
+        }
+    },
+})
+```
+
+<details>
+<summary>With subcommands</summary>
+
+```golang
+quicli.Cli{
+    Usage:       "mytool [command] [flags]",
+    Description: "A tool that does things",
+    Flags: quicli.Flags{
+        {Name: "verbose", Description: "verbose output"},
+        {Name: "output",  Default: "text", Description: "output format",
+            SharedSubcommand: quicli.SubcommandSet{"get", "list"}},
+    },
+    Function: Root,
     Subcommands: quicli.Subcommands{
-        {Name: "color", Description: "print coloured message", Function: Color},
-        {Name: "toto", Description: "??", Function: Toto},
+        {Name: "get",    Aliases: quicli.Aliases("g"),  Description: "get a resource",  Function: Get,
+            Flags: quicli.Flags{{Name: "id", Default: "", Description: "resource id"}}},
+        {Name: "list",   Aliases: quicli.Aliases("ls"), Description: "list resources",  Function: List},
+        {Name: "delete",                                 Description: "delete a resource", Function: Delete},
     },
-}
-cli.RunWithSubcommand()
+}.RunWithSubcommand()
 ```
 
-Root help (`./say-hello --help`):
 ```
-Say Hello... or not. If you want to make the world aware of it you also could
+$ mytool --help
 
-Usage: say-hello [command] [flags]
-Available commands: color, toto
+A tool that does things
 
---count  -c   how many times I want to say it. (default: 1) [env: SAY_HELLO_COUNT]
---say    -s   say something. (default: "hello") [env: SAY_HELLO_SAY]
---world  -w   announce it to the world. (default: false) [env: SAY_HELLO_WORLD]
+Usage: mytool [command] [flags]
+Available commands: get, g, list, ls, delete
 
-Use "say-hello --help" for more information about the command.
-```
+--verbose  -v   verbose output. (default: false) [env: MYTOOL_VERBOSE]
 
-Subcommand help (`./say-hello color --help`):
-```
-Say Hello... or not. ...
+Use "mytool --help" for more information about the command.
 
-Usage: say-hello [command] [flags]
-Command color: print coloured message
+$ mytool get --help
 
---count       -c   how many times I want to say it. (default: 1) [env: SAY_HELLO_COUNT]
---foreground  -f   change foreground color. (default: false) [env: SAY_HELLO_FOREGROUND]
---say         -s   say something. (default: "hello") [env: SAY_HELLO_SAY]
---surprise    -S   you will see my friend. (default: false) [env: SAY_HELLO_SURPRISE]
---world       -w   announce it to the world. (default: false) [env: SAY_HELLO_WORLD]
+Command get: get a resource
+
+--id      -i   resource id. (default: "") [env: MYTOOL_ID]
+--output  -o   output format. (default: "text") [env: MYTOOL_OUTPUT]
+--verbose -v   verbose output. (default: false) [env: MYTOOL_VERBOSE]
 ```
 
 ```bash
-./say-hello color --foreground --say "hello"
-./say-hello toto --surprise
-./say-hello clour          # quicli error: unknown subcommand 'clour', did you mean 'color'?
+$ mytool get --id abc123
+$ mytool g --id abc123         # alias works
+$ mytool lst                   # quicli error: unknown subcommand 'lst', did you mean 'list'?
+$ MYTOOL_VERBOSE=true mytool list
 ```
+
 </details>
 
-### Use flag values in code
-```golang
-cfg.GetIntFlag("count")        // --count  (int)
-cfg.GetStringFlag("say")       // --say    (string)
-cfg.GetBoolFlag("world")       // --world  (bool)
-cfg.GetFloatFlag("ratio")      // --ratio  (float64)
-cfg.GetStringSliceFlag("tags") // --tags a,b --tags c  ([]string)
-// or use the short name: cfg.GetIntFlag("c")
-```
+---
 
-**Custom short name** — override the auto-derived first letter:
-```golang
-{Name: "config", ShortName: "C", Default: "", Description: "config file"}
-// registers --config and -C
-```
+### Batteries included
 
-**Per-subcommand exclusive flags** — flags that only exist for one subcommand:
-```golang
-Subcommands: quicli.Subcommands{
-    {
-        Name: "push", Description: "push changes", Function: Push,
-        Flags: quicli.Flags{
-            {Name: "force", Description: "force push"},
-        },
-    },
-},
-```
+Every quicli CLI gets these for free — no configuration needed:
 
-**Typo detection** — if a user types an unknown subcommand, quicli automatically suggests the closest match:
-```
-$ mytool pish
-quicli error: unknown subcommand 'pish', did you mean 'push'?
-```
-
-### Env vars
-
-Every flag automatically reads from an env var as fallback before using the default.
-Auto-derived name: `PROGNAME_FLAGNAME` (uppercase, non-alphanumeric → `_`).
-
+**Env var fallback** — `PROGNAME_FLAGNAME` is checked before the default. Shown in help.
 ```bash
-SAY_HELLO_COUNT=5 ./say-hello   # same as --count 5
+SAY_HELLO_COUNT=10 ./say-hello    # same as --count 10
 ```
+Override per flag: `EnvVar: "MY_CUSTOM_VAR"` · Opt out: `EnvVar: "-"`
 
-Override the env var name per flag:
-```golang
-{Name: "token", Default: "", Description: "API token", EnvVar: "MY_API_TOKEN"}
-```
+**Short flags** — first letter auto-derived (`--count` → `-c`). Override with `ShortName: "n"`.
 
-Opt a flag out of env var lookup:
-```golang
-{Name: "secret", Default: "", Description: "...", EnvVar: "-"}
-```
-
-The env var name is shown in help output: `(default: 0) [env: SAY_HELLO_COUNT]`
-
-### Shell completion
-
-Every CLI built with quicli gets `--completion <shell>` for free:
-
+**Shell completion** — one flag, three shells:
 ```bash
 ./say-hello --completion bash >> ~/.bash_completion
-./say-hello --completion zsh  > ~/.zsh/completions/_say-hello
-./say-hello --completion fish > ~/.config/fish/completions/say-hello.fish
+./say-hello --completion zsh  >  ~/.zsh/completions/_say-hello
+./say-hello --completion fish >  ~/.config/fish/completions/say-hello.fish
 ```
 
-Get more  [examples](examples/)
+**Typo detection** — suggests the closest subcommand on misspelling:
+```
+$ mytool delet
+quicli error: unknown subcommand 'delet', did you mean 'delete'?
+```
 
-### Disclaimer
-The library is a wrapper of the built-in go `flag` package. It should only be used to quickly built CLI and it is not intented for complex CLI usage.
+---
+
+Get more [examples](examples/)
+
+> quicli is a thin wrapper around Go's `flag` package. Use it to write CLIs fast, not to build complex command hierarchies.
