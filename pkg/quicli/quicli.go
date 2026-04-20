@@ -22,8 +22,10 @@ type Flag struct {
 	//Default is use to determine the flag value type and must be defined
 	Default           interface{}
 	NoShortName       bool
+	ShortName         string        // overrides auto first-letter derivation
 	NotForRootCommand bool
 	ForSubcommand     SubcommandSet
+	EnvVar            string        // env var override (activated in PR2)
 }
 
 type Flags []Flag
@@ -201,7 +203,10 @@ func (c *Cli) PrintCheatSheet() {
 // createIntFlag: create a flag of type int and adapt help message accordingly
 func createIntFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer) {
 	name := f.Name
-	shortName := name[0:1]
+	shortName := f.ShortName
+	if shortName == "" {
+		shortName = name[0:1]
+	}
 	var intPtr int
 	flag.IntVar(&intPtr, name, int(reflect.ValueOf(f.Default).Int()), f.Description)
 	if !stringSlice.Contains(*shorts, shortName) && !f.NoShortName {
@@ -218,7 +223,10 @@ func createIntFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Write
 // createStringFlag: create a flag of type string and adapt help message accordingly
 func createStringFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer) {
 	name := f.Name
-	shortName := name[0:1]
+	shortName := f.ShortName
+	if shortName == "" {
+		shortName = name[0:1]
+	}
 	var strPtr string
 	flag.StringVar(&strPtr, name, string(reflect.ValueOf(f.Default).String()), f.Description)
 	if !stringSlice.Contains(*shorts, shortName) && !f.NoShortName {
@@ -235,7 +243,10 @@ func createStringFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Wr
 // createBoolFlag: create a flag of type bool and adapt help message accordingly
 func createBoolFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer) {
 	name := f.Name
-	shortName := name[0:1]
+	shortName := f.ShortName
+	if shortName == "" {
+		shortName = name[0:1]
+	}
 	var bPtr bool
 	flag.BoolVar(&bPtr, name, bool(reflect.ValueOf(f.Default).Bool()), f.Description)
 	cfg.Flags[name] = &bPtr
@@ -253,7 +264,10 @@ func createBoolFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writ
 // createFloatFlag: create a flag of type float64 and adapt help message accordingly
 func createFloatFlag(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer) {
 	name := f.Name
-	shortName := name[0:1]
+	shortName := f.ShortName
+	if shortName == "" {
+		shortName = name[0:1]
+	}
 	var floatPtr float64
 	flag.Float64Var(&floatPtr, name, float64(reflect.ValueOf(f.Default).Float()), f.Description)
 	cfg.Flags[name] = &floatPtr

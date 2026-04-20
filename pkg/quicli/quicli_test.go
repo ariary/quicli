@@ -24,3 +24,16 @@ func TestGetFloatFlag(t *testing.T) {
 		t.Errorf("GetFloatFlag: got %f, want 3.14", got)
 	}
 }
+
+func TestFlagCustomShortName(t *testing.T) {
+	defer setArgs([]string{"prog", "-x", "42"})()
+	cli := Cli{
+		Usage:       "prog [flags]",
+		Description: "test",
+		Flags:       Flags{{Name: "count", Default: 0, Description: "test", ShortName: "x"}},
+	}
+	cfg := cli.Parse()
+	if got := cfg.GetIntFlag("count"); got != 42 {
+		t.Errorf("custom ShortName: got %d, want 42", got)
+	}
+}

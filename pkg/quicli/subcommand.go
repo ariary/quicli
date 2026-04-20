@@ -204,7 +204,10 @@ func (f *Flag) isForSubcommand(subcommandName string) bool {
 
 func createIntFlagFs(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer, fs *flag.FlagSet) {
 	name := f.Name
-	shortName := name[0:1]
+	shortName := f.ShortName
+	if shortName == "" {
+		shortName = name[0:1]
+	}
 	var intPtr int
 	fs.IntVar(&intPtr, name, int(reflect.ValueOf(f.Default).Int()), f.Description)
 	if !stringSlice.Contains(*shorts, shortName) && !f.NoShortName {
@@ -220,7 +223,10 @@ func createIntFlagFs(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Wri
 
 func createStringFlagFs(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer, fs *flag.FlagSet) {
 	name := f.Name
-	shortName := name[0:1]
+	shortName := f.ShortName
+	if shortName == "" {
+		shortName = name[0:1]
+	}
 	var strPtr string
 	fs.StringVar(&strPtr, name, string(reflect.ValueOf(f.Default).String()), f.Description)
 	if !stringSlice.Contains(*shorts, shortName) && !f.NoShortName {
@@ -236,7 +242,10 @@ func createStringFlagFs(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.
 
 func createBoolFlagFs(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer, fs *flag.FlagSet) {
 	name := f.Name
-	shortName := name[0:1]
+	shortName := f.ShortName
+	if shortName == "" {
+		shortName = name[0:1]
+	}
 	var bPtr bool
 	fs.BoolVar(&bPtr, name, bool(reflect.ValueOf(f.Default).Bool()), f.Description)
 	cfg.Flags[name] = &bPtr
@@ -253,7 +262,10 @@ func createBoolFlagFs(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Wr
 
 func createFloatFlagFs(cfg Config, f Flag, shorts *[]string, wUsage *tabwriter.Writer, fs *flag.FlagSet) {
 	name := f.Name
-	shortName := name[0:1]
+	shortName := f.ShortName
+	if shortName == "" {
+		shortName = name[0:1]
+	}
 	var floatPtr float64
 	fs.Float64Var(&floatPtr, name, float64(reflect.ValueOf(f.Default).Float()), f.Description)
 	cfg.Flags[name] = &floatPtr
