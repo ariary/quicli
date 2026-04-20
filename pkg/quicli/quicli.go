@@ -154,10 +154,24 @@ func (c *Cli) Parse() (config Config) {
 		fs.BoolVar(&cheatSheet, "cs", false, "print cheat sheet")
 	}
 
+	var completionShell string
+	fs.StringVar(&completionShell, "completion", "", "generate shell completion script (bash, zsh, fish)")
+
 	wUsage.Flush()
 	fs.Usage = func() { fmt.Print(usage.String()) }
 	fs.Parse(os.Args[1:])
 	config.Args = fs.Args()
+	applyEnvVars(c.Flags, fs)
+
+	if completionShell != "" {
+		script, err := generateCompletion(c, completionShell)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, QUICLI_ERROR_PREFIX+err.Error())
+			os.Exit(1)
+		}
+		fmt.Print(script)
+		os.Exit(0)
+	}
 
 	if len(c.CheatSheet) > 0 && cheatSheet {
 		c.PrintCheatSheet()
