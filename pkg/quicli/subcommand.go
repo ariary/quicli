@@ -17,7 +17,7 @@ type Subcommand struct {
 	Aliases     mapset.Set[string]
 	Description string
 	Function    Runner
-	// Flags       []Flag
+	Flags       []Flag // flags exclusive to this subcommand
 }
 
 func Aliases(aliases ...string) (aliasesSet mapset.Set[string]) {
@@ -137,6 +137,36 @@ func (c *Cli) RunWithSubcommand() {
 			os.Exit(2)
 		}
 	}
+	// Register exclusive flags for the active subcommand
+	if !isRootCommand(c.Subcommands) {
+		sub := getSubcommandByName(c.Subcommands, os.Args[1])
+		for i := 0; i < len(sub.Flags); i++ {
+			f := sub.Flags[i]
+			if len(f.Name) == 0 {
+				fmt.Println(QUICLI_ERROR_PREFIX + "empty flag name definition in subcommand " + sub.Name)
+				os.Exit(2)
+			}
+			if f.Default == nil {
+				f.Default = false
+			}
+			switch f.Default.(type) {
+			case int:
+				createIntFlag(config, f, &shorts, wUsage, fs)
+			case string:
+				createStringFlag(config, f, &shorts, wUsage, fs)
+			case bool:
+				createBoolFlag(config, f, &shorts, wUsage, fs)
+			case float64:
+				createFloatFlag(config, f, &shorts, wUsage, fs)
+			case []string:
+				createStringSliceFlag(config, f, &shorts, wUsage, fs)
+			default:
+				fmt.Println(QUICLI_ERROR_PREFIX+"Unknown flag type:", f.Default)
+				os.Exit(2)
+			}
+		}
+	}
+
 	fmt.Fprintf(wUsage, "\nUse \""+color.Yellow(os.Args[0])+" --help\" for more information about the command.\n")
 
 	//cheat sheet pt1
