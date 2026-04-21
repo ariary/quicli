@@ -56,6 +56,49 @@ $ say-hello --completion zsh           # print zsh completion script
 Supported field types: `int`, `string`, `bool`, `float64`, `[]string`.
 Tags: `cli:"desc"` · `default:"val"` · `short:"x"` · `env:"VAR"` (or `"-"` to opt out).
 
+<details>
+<summary>With subcommands</summary>
+
+Give each subcommand its own struct. `NewSubcommand` infers the flags from it:
+
+```golang
+type ColorOpts struct {
+    Foreground bool `cli:"use foreground color"`
+}
+
+type WhisperOpts struct {
+    Say   string `cli:"what to whisper" default:"psst"`
+    Times int    `cli:"how many times"  default:"1"`
+}
+
+func main() {
+    colorSub := quicli.NewSubcommand("color", "print in red", func(o ColorOpts) {
+        fmt.Println("foreground:", o.Foreground)
+    })
+    colorSub.Aliases = quicli.Aliases("co")   // optional
+
+    quicli.Cli{
+        Usage:       "say-hello [command] [flags]",
+        Description: "Say Hello to the world",
+        Function:    func(cfg quicli.Config) { fmt.Println("hello") },
+        Subcommands: quicli.Subcommands{
+            colorSub,
+            quicli.NewSubcommand("whisper", "say quietly", func(o WhisperOpts) {
+                for i := 0; i < o.Times; i++ { fmt.Println(o.Say) }
+            }),
+        },
+    }.RunWithSubcommand()
+}
+```
+
+```bash
+$ say-hello color --foreground
+$ say-hello co --foreground      # alias works
+$ say-hello whisper --say "shhh" --times 2
+```
+
+</details>
+
 ---
 
 ### The one-liner way
