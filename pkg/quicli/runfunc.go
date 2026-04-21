@@ -2,6 +2,7 @@ package quicli
 
 import (
 	"fmt"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -115,6 +116,44 @@ func flagsFromStruct(t reflect.Type) ([]Flag, error) {
 		flags = append(flags, f)
 	}
 	return flags, nil
+}
+
+// NewSubcommand builds a Subcommand whose flags are inferred from the exported
+// fields of T that carry a `cli:` tag — the same rules as RunFunc.
+// The inferred flags become exclusive to this subcommand (Subcommand.Flags).
+//
+// Example:
+//
+//	type ColorOpts struct {
+//	    Foreground bool `cli:"use foreground color"`
+//	    Surprise   bool `cli:"loop forever"`
+//	}
+//	sub := quicli.NewSubcommand("color", "print coloured message", func(o ColorOpts) {
+//	    fmt.Println("foreground:", o.Foreground)
+//	})
+//	// optionally add aliases: sub.Aliases = quicli.Aliases("co", "x")
+func NewSubcommand[T any](name, description string, fn func(T)) Subcommand {
+	var zero T
+	t := reflect.TypeOf(zero)
+	if t.Kind() != reflect.Struct {
+		fmt.Println(QUICLI_ERROR_PREFIX + "NewSubcommand: T must be a struct")
+		os.Exit(2)
+	}
+
+	flags, err := flagsFromStruct(t)
+	if err != nil {
+		fmt.Println(QUICLI_ERROR_PREFIX + err.Error())
+		os.Exit(2)
+	}
+
+	return Subcommand{
+		Name:        name,
+		Description: description,
+		Flags:       flags,
+		Function: func(cfg Config) {
+			fn(populateStruct[T](t, cfg))
+		},
+	}
 }
 
 // populateStruct fills a new T from Config, reading each field by its lowercased name.

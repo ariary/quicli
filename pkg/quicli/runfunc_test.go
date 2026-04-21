@@ -188,3 +188,84 @@ func TestRunFuncSlice(t *testing.T) {
 		t.Errorf("RunFunc slice: got %v, want [a b]", got)
 	}
 }
+
+// --- NewSubcommand tests ---
+
+func TestNewSubcommandMetadata(t *testing.T) {
+	type ColorOpts struct {
+		Foreground bool `cli:"use foreground color"`
+		Repeat     int  `cli:"how many times" default:"1"`
+	}
+	sub := NewSubcommand("color", "print coloured message", func(o ColorOpts) {})
+
+	if sub.Name != "color" {
+		t.Errorf("Name: got %q, want color", sub.Name)
+	}
+	if sub.Description != "print coloured message" {
+		t.Errorf("Description: got %q, want 'print coloured message'", sub.Description)
+	}
+	if len(sub.Flags) != 2 {
+		t.Errorf("got %d flags, want 2", len(sub.Flags))
+	}
+	if sub.Function == nil {
+		t.Error("Function must not be nil")
+	}
+}
+
+func TestNewSubcommandIntegration(t *testing.T) {
+	defer setArgs([]string{"prog", "greet", "--name", "World", "--count", "3"})()
+
+	type GreetOpts struct {
+		Name  string `cli:"who to greet" default:"stranger"`
+		Count int    `cli:"how many times" default:"1"`
+	}
+
+	var gotName string
+	var gotCount int
+
+	cli := Cli{
+		Usage:       "prog [command]",
+		Description: "test",
+		Function:    func(cfg Config) {},
+		Subcommands: Subcommands{
+			NewSubcommand("greet", "greet someone", func(o GreetOpts) {
+				gotName = o.Name
+				gotCount = o.Count
+			}),
+		},
+	}
+	cli.RunWithSubcommand()
+
+	if gotName != "World" {
+		t.Errorf("Name: got %q, want World", gotName)
+	}
+	if gotCount != 3 {
+		t.Errorf("Count: got %d, want 3", gotCount)
+	}
+}
+
+func TestNewSubcommandDefaultsUsed(t *testing.T) {
+	defer setArgs([]string{"prog", "greet"})()
+
+	type GreetOpts struct {
+		Name string `cli:"who to greet" default:"stranger"`
+	}
+
+	var gotName string
+
+	cli := Cli{
+		Usage:       "prog [command]",
+		Description: "test",
+		Function:    func(cfg Config) {},
+		Subcommands: Subcommands{
+			NewSubcommand("greet", "greet someone", func(o GreetOpts) {
+				gotName = o.Name
+			}),
+		},
+	}
+	cli.RunWithSubcommand()
+
+	if gotName != "stranger" {
+		t.Errorf("default: got %q, want stranger", gotName)
+	}
+}
