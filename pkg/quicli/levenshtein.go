@@ -33,11 +33,9 @@ func findClosestSubcommand(subcommands Subcommands, input string) string {
 		if d := levenshtein(input, s.Name); d < bestDist {
 			best, bestDist = s.Name, d
 		}
-		if s.Aliases != nil {
-			for _, a := range s.Aliases.ToSlice() {
-				if d := levenshtein(input, a); d < bestDist {
-					best, bestDist = s.Name, d
-				}
+		for _, a := range s.Aliases {
+			if d := levenshtein(input, a); d < bestDist {
+				best, bestDist = s.Name, d
 			}
 		}
 	}

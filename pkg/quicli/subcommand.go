@@ -9,23 +9,19 @@ import (
 	"text/tabwriter"
 
 	"github.com/ariary/go-utils/pkg/color"
-	mapset "github.com/deckarep/golang-set/v2"
 )
 
 // Subcommand
 type Subcommand struct {
 	Name        string
-	Aliases     mapset.Set[string]
+	Aliases     []string
 	Description string
 	Function    Runner
 	Flags       []Flag // flags exclusive to this subcommand
 }
 
-func Aliases(aliases ...string) (aliasesSet mapset.Set[string]) {
-	aliasesSet = mapset.NewSet[string]()
-	aliasesSet.Append(aliases...)
-
-	return aliasesSet
+func Aliases(aliases ...string) []string {
+	return aliases
 }
 
 type Subcommands []Subcommand
@@ -48,9 +44,7 @@ func (c *Cli) RunWithSubcommand() {
 			subcommandSet := []string{}
 			for _, sub := range c.Subcommands {
 				subcommandSet = append(subcommandSet, sub.Name)
-				if sub.Aliases != nil {
-					subcommandSet = append(subcommandSet, sub.Aliases.ToSlice()...)
-				}
+				subcommandSet = append(subcommandSet, sub.Aliases...)
 			}
 			fmt.Fprintf(wUsage, color.Yellow(c.Description)+"\n\nUsage: "+c.Usage+"\nAvailable commands: "+strings.Join(subcommandSet, ", ")+"\n\n")
 		} else {
@@ -72,8 +66,7 @@ func (c *Cli) RunWithSubcommand() {
 	//Subcommands preliminary checks
 	if len(c.Subcommands) > 0 {
 		checkSubcommandFunctionIsDefined(c)
-		allAliases := mapset.NewSet[string]()
-		checkSubcommandAliasesUniqueness(c, allAliases)
+		checkSubcommandAliasesUniqueness(c)
 	}
 
 	//flags
@@ -98,9 +91,7 @@ func (c *Cli) RunWithSubcommand() {
 		var flagForSub SubcommandSet
 		for _, scName := range f.SharedSubcommand {
 			subcommand := getSubcommandByName(c.Subcommands, scName)
-			if subcommand.Aliases != nil {
-				flagForSub = append(flagForSub, subcommand.Aliases.ToSlice()...)
-			}
+			flagForSub = append(flagForSub, subcommand.Aliases...)
 		}
 		f.SharedSubcommand = append(f.SharedSubcommand, flagForSub...)
 
@@ -238,7 +229,7 @@ func getSubcommandByName(subcommands Subcommands, subcommandName string) (sub Su
 		if subcommandName == s.Name {
 			return s
 		}
-		if s.Aliases != nil && s.Aliases.Contains(subcommandName) {
+		if slices.Contains(s.Aliases, subcommandName) {
 			return s
 		}
 	}
@@ -261,16 +252,20 @@ func checkSubcommandFunctionIsDefined(c *Cli) {
 }
 
 // checkSubcommandAliasesUniqueness: assert the subcommand Aliases are unique (ie not same alias for two different subcommands), exit otherwise
-func checkSubcommandAliasesUniqueness(c *Cli, allAliases mapset.Set[string]) {
+func checkSubcommandAliasesUniqueness(c *Cli) {
+	seen := map[string]bool{}
 	for _, sub := range c.Subcommands {
-		if sub.Aliases != nil {
-			commonAliases := allAliases.Intersect(sub.Aliases)
-			if commonAliases.Cardinality() == 0 {
-				allAliases.Append(sub.Aliases.ToSlice()...)
+		var duplicates []string
+		for _, a := range sub.Aliases {
+			if seen[a] {
+				duplicates = append(duplicates, a)
 			} else {
-				fmt.Println(QUICLI_ERROR_PREFIX+"subcommand", sub.Name, "define some already defined aliases ('", strings.Join(commonAliases.ToSlice(), ","), "')")
-				os.Exit(2)
+				seen[a] = true
 			}
+		}
+		if len(duplicates) > 0 {
+			fmt.Println(QUICLI_ERROR_PREFIX+"subcommand", sub.Name, "define some already defined aliases ('", strings.Join(duplicates, ","), "')")
+			os.Exit(2)
 		}
 	}
 }
