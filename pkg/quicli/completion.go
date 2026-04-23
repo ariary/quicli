@@ -30,9 +30,7 @@ func allSubcommandNames(subs Subcommands) []string {
 	var names []string
 	for _, s := range subs {
 		names = append(names, s.Name)
-		if s.Aliases != nil {
-			names = append(names, s.Aliases.ToSlice()...)
-		}
+		names = append(names, s.Aliases...)
 	}
 	return names
 }
@@ -132,7 +130,7 @@ func generateFishCompletion(c *Cli) string {
 		fmt.Fprintf(&b, "complete -c %s -n \"__fish_use_subcommand\" -f -a %s -d '%s'\n",
 			prog, s.Name, s.Description)
 		if s.Aliases != nil {
-			for _, alias := range s.Aliases.ToSlice() {
+			for _, alias := range s.Aliases {
 				fmt.Fprintf(&b, "complete -c %s -n \"__fish_use_subcommand\" -f -a %s -d '%s (alias)'\n",
 					prog, alias, s.Description)
 			}
