@@ -12,7 +12,7 @@ type Opts struct {
 }
 ```
 
-**Is a complete CLI.** Help text, short flags, env vars, shell completion, input validation, JSON Schema. All generated.
+**Is a complete CLI.** Help text, short flags, env vars, shell completion, input validation, JSON Schema (for AI tool integration). All generated.
 
 ```
 $ say-hello --help
