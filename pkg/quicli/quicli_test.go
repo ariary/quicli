@@ -3,6 +3,7 @@ package quicli
 import (
 	"os"
 	"testing"
+	"time"
 )
 
 // setArgs temporarily overrides os.Args and returns a restore func.
@@ -49,6 +50,32 @@ func TestStringSliceFlag(t *testing.T) {
 	got := cfg.GetStringSliceFlag("file")
 	if len(got) != 3 || got[0] != "a" || got[1] != "b" || got[2] != "c" {
 		t.Errorf("GetStringSliceFlag: got %v, want [a b c]", got)
+	}
+}
+
+func TestDurationFlag(t *testing.T) {
+	defer setArgs([]string{"prog", "--timeout", "5s"})()
+	cli := Cli{
+		Usage:       "prog [flags]",
+		Description: "test",
+		Flags:       Flags{{Name: "timeout", Default: 30 * time.Second, Description: "request timeout"}},
+	}
+	cfg := cli.Parse()
+	if got := cfg.GetDurationFlag("timeout"); got != 5*time.Second {
+		t.Errorf("GetDurationFlag: got %v, want 5s", got)
+	}
+}
+
+func TestDurationFlagDefault(t *testing.T) {
+	defer setArgs([]string{"prog"})()
+	cli := Cli{
+		Usage:       "prog [flags]",
+		Description: "test",
+		Flags:       Flags{{Name: "timeout", Default: 30 * time.Second, Description: "request timeout"}},
+	}
+	cfg := cli.Parse()
+	if got := cfg.GetDurationFlag("timeout"); got != 30*time.Second {
+		t.Errorf("GetDurationFlag default: got %v, want 30s", got)
 	}
 }
 

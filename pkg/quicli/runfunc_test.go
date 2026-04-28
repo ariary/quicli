@@ -3,6 +3,7 @@ package quicli
 import (
 	"reflect"
 	"testing"
+	"time"
 )
 
 // --- flagsFromStruct tests ---
@@ -186,6 +187,115 @@ func TestRunFuncSlice(t *testing.T) {
 	})
 	if len(got) != 2 || got[0] != "a" || got[1] != "b" {
 		t.Errorf("RunFunc slice: got %v, want [a b]", got)
+	}
+}
+
+// --- Duration tests ---
+
+func TestRunFuncDuration(t *testing.T) {
+	defer setArgs([]string{"prog", "--timeout", "5s"})()
+	type Opts struct {
+		Timeout time.Duration `cli:"request timeout" default:"30s"`
+	}
+	var got time.Duration
+	RunFunc("prog [flags]", "test", func(o Opts) {
+		got = o.Timeout
+	})
+	if got != 5*time.Second {
+		t.Errorf("RunFunc duration: got %v, want 5s", got)
+	}
+}
+
+func TestRunFuncDurationDefault(t *testing.T) {
+	defer setArgs([]string{"prog"})()
+	type Opts struct {
+		Timeout time.Duration `cli:"request timeout" default:"30s"`
+	}
+	var got time.Duration
+	RunFunc("prog [flags]", "test", func(o Opts) {
+		got = o.Timeout
+	})
+	if got != 30*time.Second {
+		t.Errorf("RunFunc duration default: got %v, want 30s", got)
+	}
+}
+
+// --- flag.Value custom type tests ---
+
+// testLevel is a simple custom type that implements flag.Value.
+type testLevel struct {
+	val string
+}
+
+func (l *testLevel) String() string {
+	if l == nil {
+		return ""
+	}
+	return l.val
+}
+
+func (l *testLevel) Set(s string) error {
+	l.val = s
+	return nil
+}
+
+func TestRunFuncFlagValue(t *testing.T) {
+	defer setArgs([]string{"prog", "--level", "warn"})()
+	type Opts struct {
+		Level testLevel `cli:"log level" default:"info"`
+	}
+	var got string
+	RunFunc("prog [flags]", "test", func(o Opts) {
+		got = o.Level.val
+	})
+	if got != "warn" {
+		t.Errorf("RunFunc flag.Value: got %q, want warn", got)
+	}
+}
+
+func TestRunFuncFlagValueDefault(t *testing.T) {
+	defer setArgs([]string{"prog"})()
+	type Opts struct {
+		Level testLevel `cli:"log level" default:"info"`
+	}
+	var got string
+	RunFunc("prog [flags]", "test", func(o Opts) {
+		got = o.Level.val
+	})
+	if got != "info" {
+		t.Errorf("RunFunc flag.Value default: got %q, want info", got)
+	}
+}
+
+// --- Required/Choices tag parsing tests ---
+
+func TestFlagsFromStructRequired(t *testing.T) {
+	type opts struct {
+		Output string `cli:"output file" required:"true"`
+		Name   string `cli:"your name"`
+	}
+	flags, err := flagsFromStruct(reflect.TypeOf(opts{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !flags[0].Required {
+		t.Error("Output should be required")
+	}
+	if flags[1].Required {
+		t.Error("Name should not be required")
+	}
+}
+
+func TestFlagsFromStructChoices(t *testing.T) {
+	type opts struct {
+		Format string `cli:"output format" choices:"json,yaml,csv"`
+	}
+	flags, err := flagsFromStruct(reflect.TypeOf(opts{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(flags[0].Choices) != 3 {
+		t.Errorf("Choices: got %v, want [json yaml csv]", flags[0].Choices)
 	}
 }
 

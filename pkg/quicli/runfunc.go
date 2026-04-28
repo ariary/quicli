@@ -1,11 +1,13 @@
 package quicli
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // RunFunc builds and runs a CLI inferred from the exported fields of T.
@@ -52,6 +54,11 @@ func RunFunc[T any](usage, description string, fn func(T)) {
 	fn(populateStruct[T](t, cfg))
 }
 
+var (
+	durationType  = reflect.TypeOf(time.Duration(0))
+	flagValueType = reflect.TypeOf((*flag.Value)(nil)).Elem()
+)
+
 // flagsFromStruct reflects on struct type t and returns Flag definitions
 // for each exported field that has a `cli:` tag.
 func flagsFromStruct(t reflect.Type) ([]Flag, error) {
@@ -68,9 +75,43 @@ func flagsFromStruct(t reflect.Type) ([]Flag, error) {
 			Description: cliTag,
 			ShortName:   field.Tag.Get("short"),
 			EnvVar:      field.Tag.Get("env"),
+			Required:    field.Tag.Get("required") == "true",
+		}
+		if choicesTag := field.Tag.Get("choices"); choicesTag != "" {
+			f.Choices = strings.Split(choicesTag, ",")
 		}
 
 		defaultTag := field.Tag.Get("default")
+
+		// Special types: check concrete type before falling back to Kind.
+		if field.Type == durationType {
+			if defaultTag != "" {
+				d, err := time.ParseDuration(defaultTag)
+				if err != nil {
+					return nil, fmt.Errorf("field %s: invalid default duration %q: %w", field.Name, defaultTag, err)
+				}
+				f.Default = d
+			} else {
+				f.Default = time.Duration(0)
+			}
+			flags = append(flags, f)
+			continue
+		}
+
+		// Any type whose pointer implements flag.Value.
+		if reflect.PointerTo(field.Type).Implements(flagValueType) {
+			valPtr := reflect.New(field.Type)
+			fv := valPtr.Interface().(flag.Value)
+			if defaultTag != "" {
+				if err := fv.Set(defaultTag); err != nil {
+					return nil, fmt.Errorf("field %s: invalid default %q: %w", field.Name, defaultTag, err)
+				}
+			}
+			f.Default = fv
+			flags = append(flags, f)
+			continue
+		}
+
 		switch field.Type.Kind() {
 		case reflect.Int:
 			if defaultTag != "" {
@@ -110,7 +151,7 @@ func flagsFromStruct(t reflect.Type) ([]Flag, error) {
 			}
 			f.Default = []string{}
 		default:
-			return nil, fmt.Errorf("field %s: unsupported type %s (supported: int, string, bool, float64, []string)", field.Name, field.Type.Kind())
+			return nil, fmt.Errorf("field %s: unsupported type %s (supported: int, string, bool, float64, []string, time.Duration, or any type implementing flag.Value)", field.Name, field.Type.Kind())
 		}
 
 		flags = append(flags, f)
@@ -166,6 +207,19 @@ func populateStruct[T any](t reflect.Type, cfg Config) T {
 			continue
 		}
 		name := strings.ToLower(field.Name)
+
+		// Special types: check concrete type before falling back to Kind.
+		if field.Type == durationType {
+			v.Field(i).Set(reflect.ValueOf(cfg.GetDurationFlag(name)))
+			continue
+		}
+		if reflect.PointerTo(field.Type).Implements(flagValueType) {
+			// cfg.Flags[name] is *T (a flag.Value); dereference to get T.
+			fv := cfg.Flags[name]
+			v.Field(i).Set(reflect.ValueOf(fv).Elem())
+			continue
+		}
+
 		switch field.Type.Kind() {
 		case reflect.Int:
 			v.Field(i).SetInt(int64(cfg.GetIntFlag(name)))
