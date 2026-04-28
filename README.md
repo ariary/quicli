@@ -1,36 +1,18 @@
 ## 🏃⌨️ quicli
-### Build CLI in Go without the ceremony
 
-No init functions. No command registration. No flag pointers.
-Define your CLI in one expression *(or just tag a struct)*
-
-Inspired by [nim's cligen](https://github.com/c-blake/cligen).
-
----
-
-### The zero-boilerplate way
-
-Tag a struct, pass a function. Your flags are already in `Opts` Struct:
+**This struct:**
 
 ```golang
 type Opts struct {
-    Count  int           `cli:"how many times"    default:"1"`
-    Say    string        `cli:"what to say"       default:"hello"`
-    World  bool          `cli:"announce it"`
-    Format string        `cli:"output format"     choices:"text,json,yaml" default:"text"`
-    Tags   []string      `cli:"filter by tags"`
-}
-
-func main() {
-    quicli.RunFunc("say-hello [flags]", "Say Hello to the world", func(o Opts) {
-        for i := 0; i < o.Count; i++ {
-            msg := o.Say
-            if o.World { msg = "🌍 " + msg }
-            fmt.Println(msg)
-        }
-    })
+    Count  int      `cli:"how many times"    default:"1"`
+    Say    string   `cli:"what to say"       default:"hello"`
+    World  bool     `cli:"announce it"`
+    Format string   `cli:"output format"     choices:"text,json,yaml" default:"text"`
+    Tags   []string `cli:"filter by tags"`
 }
 ```
+
+**Is a complete CLI.** Help text, short flags, env vars, shell completion, input validation, JSON Schema. All generated.
 
 ```
 $ say-hello --help
@@ -44,19 +26,40 @@ Usage: say-hello [flags]
 --world   -w   announce it. (default: false) [env: SAY_HELLO_WORLD]
 --format  -f   output format. (choices: text, json, yaml) (default: "text") [env: SAY_HELLO_FORMAT]
 --tags    -t   filter by tags. (default: []) [env: SAY_HELLO_TAGS]
-
-Use "say-hello --help" for more information about the command.
 ```
 
 ```bash
 $ say-hello --count 3 --say "bonjour"
 $ say-hello -w
 $ SAY_HELLO_COUNT=5 say-hello          # env var, same as --count 5
-$ say-hello --completion zsh           # print zsh completion script
-$ say-hello --json-schema              # print JSON Schema for AI tools
+$ say-hello --completion zsh           # shell completion
+$ say-hello --json-schema              # JSON Schema for AI tools
 ```
 
-Supported field types: `int`, `string`, `bool`, `float64`, `[]string`, `time.Duration`, or any type implementing `flag.Value`.
+No init functions. No command registration. No flag pointers.
+Inspired by [nim's cligen](https://github.com/c-blake/cligen).
+
+---
+
+### Getting started
+
+Tag a struct, pass a function:
+
+```golang
+func main() {
+    quicli.RunFunc("say-hello [flags]", "Say Hello to the world", func(o Opts) {
+        for i := 0; i < o.Count; i++ {
+            msg := o.Say
+            if o.World { msg = "🌍 " + msg }
+            fmt.Println(msg)
+        }
+    })
+}
+```
+
+That's it. Flags are parsed, validated, and passed to your function as a typed struct.
+
+Supported types: `int`, `string`, `bool`, `float64`, `[]string`, `time.Duration`, or any type implementing `flag.Value`.
 Tags: `cli:"desc"` · `default:"val"` · `short:"x"` · `env:"VAR"` · `required:"true"` · `choices:"a,b,c"`
 
 <details>
