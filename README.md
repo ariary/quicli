@@ -1,4 +1,5 @@
 ## 🏃⌨️ quicli
+### Zero-boilerplate CLI in Go
 
 **This struct:**
 
