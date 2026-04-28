@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/ariary/go-utils/pkg/color"
 )
@@ -126,9 +127,23 @@ func (c *Cli) RunWithSubcommand() {
 			} else if len(os.Args) > 1 && f.isForSubcommand(os.Args[1]) {
 				createStringSliceFlag(config, f, &shorts, wUsage, fs)
 			}
+		case time.Duration:
+			if isRootCommand(c.Subcommands) && !f.NotForRootCommand {
+				createDurationFlag(config, f, &shorts, wUsage, fs)
+			} else if len(os.Args) > 1 && f.isForSubcommand(os.Args[1]) {
+				createDurationFlag(config, f, &shorts, wUsage, fs)
+			}
 		default:
-			fmt.Println(QUICLI_ERROR_PREFIX+"Unknown flag type:", f.Default)
-			os.Exit(2)
+			if _, ok := f.Default.(flag.Value); ok {
+				if isRootCommand(c.Subcommands) && !f.NotForRootCommand {
+					createValueFlag(config, f, &shorts, wUsage, fs)
+				} else if len(os.Args) > 1 && f.isForSubcommand(os.Args[1]) {
+					createValueFlag(config, f, &shorts, wUsage, fs)
+				}
+			} else {
+				fmt.Println(QUICLI_ERROR_PREFIX+"Unknown flag type:", f.Default)
+				os.Exit(2)
+			}
 		}
 	}
 	// Register exclusive flags for the active subcommand
@@ -153,9 +168,15 @@ func (c *Cli) RunWithSubcommand() {
 				createFloatFlag(config, f, &shorts, wUsage, fs)
 			case []string:
 				createStringSliceFlag(config, f, &shorts, wUsage, fs)
+			case time.Duration:
+				createDurationFlag(config, f, &shorts, wUsage, fs)
 			default:
-				fmt.Println(QUICLI_ERROR_PREFIX+"Unknown flag type:", f.Default)
-				os.Exit(2)
+				if _, ok := f.Default.(flag.Value); ok {
+					createValueFlag(config, f, &shorts, wUsage, fs)
+				} else {
+					fmt.Println(QUICLI_ERROR_PREFIX+"Unknown flag type:", f.Default)
+					os.Exit(2)
+				}
 			}
 		}
 	}
@@ -172,6 +193,9 @@ func (c *Cli) RunWithSubcommand() {
 
 	var completionShell string
 	fs.StringVar(&completionShell, "completion", "", "generate shell completion script (bash, zsh, fish)")
+
+	var jsonSchemaFlag bool
+	fs.BoolVar(&jsonSchemaFlag, "json-schema", false, "output JSON Schema and exit")
 
 	wUsage.Flush()
 	// Parse
@@ -199,11 +223,26 @@ func (c *Cli) RunWithSubcommand() {
 		os.Exit(0)
 	}
 
+	if jsonSchemaFlag {
+		if !isRootCommand(c.Subcommands) {
+			sub := getSubcommandByName(c.Subcommands, os.Args[1])
+			schemas := c.SubcommandSchemas()
+			schema := schemas[sub.Name]
+			b, _ := jsonMarshalIndent(schema)
+			fmt.Println(string(b))
+		} else {
+			fmt.Println(c.JSONSchemaString())
+		}
+		os.Exit(0)
+	}
+
 	//cheat sheet pt2
 	if len(c.CheatSheet) > 0 && cheatSheet {
 		c.PrintCheatSheet()
 		os.Exit(0)
 	}
+
+	validateFlags(allFlags, fs)
 
 	// Run
 	if isRootCommand(c.Subcommands) {

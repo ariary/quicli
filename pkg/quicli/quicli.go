@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/ariary/go-utils/pkg/color"
 )
@@ -24,6 +25,8 @@ type Flag struct {
 	NotForRootCommand bool
 	SharedSubcommand  SubcommandSet
 	EnvVar            string        // env var override (activated in PR2)
+	Required          bool          // flag must be explicitly provided
+	Choices           []string      // valid values (for string flags)
 }
 
 type Flags []Flag
@@ -86,6 +89,17 @@ func (c Config) GetBoolFlag(name string) bool {
 	return *boolean
 }
 
+// GetDurationFlag returns the time.Duration value of a duration flag.
+func (c Config) GetDurationFlag(name string) time.Duration {
+	elem := c.Flags[name]
+	if elem == nil {
+		fmt.Println(QUICLI_ERROR_PREFIX, "failed to retrieve value for flag:", name)
+		os.Exit(92)
+	}
+	d := reflect.ValueOf(elem).Interface().(*time.Duration)
+	return *d
+}
+
 // GetFloatFlag returns the float64 value of a float64 flag.
 func (c Config) GetFloatFlag(name string) float64 {
 	elem := c.Flags[name]
@@ -140,9 +154,15 @@ func (c *Cli) Parse() (config Config) {
 			createFloatFlag(config, f, &shorts, wUsage, fs)
 		case []string:
 			createStringSliceFlag(config, f, &shorts, wUsage, fs)
+		case time.Duration:
+			createDurationFlag(config, f, &shorts, wUsage, fs)
 		default:
-			fmt.Println(QUICLI_ERROR_PREFIX+"Unknown flag type:", f.Default)
-			os.Exit(2)
+			if _, ok := f.Default.(flag.Value); ok {
+				createValueFlag(config, f, &shorts, wUsage, fs)
+			} else {
+				fmt.Println(QUICLI_ERROR_PREFIX+"Unknown flag type:", f.Default)
+				os.Exit(2)
+			}
 		}
 	}
 	fmt.Fprintf(wUsage, "\nUse \""+color.Yellow(os.Args[0])+" --help\" for more information about the command.\n")
@@ -156,6 +176,9 @@ func (c *Cli) Parse() (config Config) {
 
 	var completionShell string
 	fs.StringVar(&completionShell, "completion", "", "generate shell completion script (bash, zsh, fish)")
+
+	var jsonSchemaFlag bool
+	fs.BoolVar(&jsonSchemaFlag, "json-schema", false, "output JSON Schema and exit")
 
 	wUsage.Flush()
 	fs.Usage = func() { fmt.Print(usage.String()) }
@@ -173,11 +196,17 @@ func (c *Cli) Parse() (config Config) {
 		os.Exit(0)
 	}
 
+	if jsonSchemaFlag {
+		fmt.Println(c.JSONSchemaString())
+		os.Exit(0)
+	}
+
 	if len(c.CheatSheet) > 0 && cheatSheet {
 		c.PrintCheatSheet()
 		os.Exit(0)
 	}
 
+	validateFlags(c.Flags, fs)
 	return config
 }
 
