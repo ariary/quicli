@@ -111,6 +111,61 @@ func TestSubcommandPrefixMatchOnAlias(t *testing.T) {
 	}
 }
 
+func TestSubcommandPrefixMatchWithSharedFlag(t *testing.T) {
+	defer setArgs([]string{"prog", "fe", "--since", "3d"})()
+	var receivedSince string
+	cli := Cli{
+		Usage:       "prog [command]",
+		Description: "test",
+		Function:    func(cfg Config) {},
+		Flags: Flags{
+			{Name: "since", Default: "", Description: "time range", SharedSubcommand: SubcommandSet{"feed"}},
+		},
+		Subcommands: Subcommands{
+			{
+				Name:        "feed",
+				Description: "run feed",
+				Function: func(cfg Config) {
+					receivedSince = cfg.GetStringFlag("since")
+				},
+			},
+			{
+				Name:        "get",
+				Description: "get something",
+				Function:    func(cfg Config) {},
+			},
+		},
+	}
+	cli.RunWithSubcommand()
+	if receivedSince != "3d" {
+		t.Errorf("prefix match with shared flag: got %q, want '3d'", receivedSince)
+	}
+}
+
+func TestSubcommandPrefixMatchWithExclusiveFlag(t *testing.T) {
+	defer setArgs([]string{"prog", "gre", "--name", "World"})()
+	var receivedName string
+	cli := Cli{
+		Usage:       "prog [command]",
+		Description: "test",
+		Function:    func(cfg Config) {},
+		Subcommands: Subcommands{
+			{
+				Name:        "greet",
+				Description: "greet someone",
+				Flags:       Flags{{Name: "name", Default: "", Description: "who to greet"}},
+				Function: func(cfg Config) {
+					receivedName = cfg.GetStringFlag("name")
+				},
+			},
+		},
+	}
+	cli.RunWithSubcommand()
+	if receivedName != "World" {
+		t.Errorf("prefix match with exclusive flag: got %q, want 'World'", receivedName)
+	}
+}
+
 func TestSubcommandExclusiveFlag(t *testing.T) {
 	defer setArgs([]string{"prog", "greet", "--name", "World"})()
 	var receivedName string

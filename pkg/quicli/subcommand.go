@@ -39,6 +39,14 @@ func (c *Cli) RunWithSubcommand() {
 	config.Flags = make(map[string]any)
 	fs := flag.NewFlagSet("parser", flag.ExitOnError)
 
+	// Normalize prefix-matched or alias subcommand name to its canonical form
+	// so that downstream flag matching (isForSubcommand) works correctly.
+	if len(os.Args) > 1 && !strings.HasPrefix(os.Args[1], "-") {
+		if sub := getSubcommandByName(c.Subcommands, os.Args[1]); sub.Name != "" {
+			os.Args[1] = sub.Name
+		}
+	}
+
 	//Description
 	if isRootCommand(c.Subcommands) {
 		if len(c.Subcommands) > 0 {
