@@ -246,6 +246,19 @@ func (c *Cli) RunWithSubcommand() {
 
 	// Run
 	if isRootCommand(c.Subcommands) {
+		if c.Function == nil {
+			if len(os.Args) > 1 && !strings.HasPrefix(os.Args[1], "-") {
+				subcommandSet := []string{}
+				for _, sub := range c.Subcommands {
+					subcommandSet = append(subcommandSet, sub.Name)
+					subcommandSet = append(subcommandSet, sub.Aliases...)
+				}
+				fmt.Println(QUICLI_ERROR_PREFIX + "unknown subcommand '" + os.Args[1] + "'. Available commands: " + strings.Join(subcommandSet, ", "))
+				os.Exit(2)
+			}
+			fs.Usage()
+			os.Exit(0)
+		}
 		c.Function(config)
 	} else {
 		getSubcommandByName(c.Subcommands, os.Args[1]).Function(config)
@@ -262,8 +275,9 @@ func isRootCommand(subcommands Subcommands) bool {
 	}
 }
 
-// getSubcommandByName: return the subcommand with name (take into account aliases)
+// getSubcommandByName: return the subcommand with name (take into account aliases and unambiguous prefix matching)
 func getSubcommandByName(subcommands Subcommands, subcommandName string) (sub Subcommand) {
+	// Exact match on name or alias
 	for _, s := range subcommands {
 		if subcommandName == s.Name {
 			return s
@@ -272,6 +286,29 @@ func getSubcommandByName(subcommands Subcommands, subcommandName string) (sub Su
 			return s
 		}
 	}
+
+	// Unambiguous prefix match on name or alias
+	var match Subcommand
+	count := 0
+	for _, s := range subcommands {
+		matched := false
+		if strings.HasPrefix(s.Name, subcommandName) {
+			matched = true
+		}
+		for _, a := range s.Aliases {
+			if strings.HasPrefix(a, subcommandName) {
+				matched = true
+			}
+		}
+		if matched {
+			match = s
+			count++
+		}
+	}
+	if count == 1 {
+		return match
+	}
+
 	return sub
 }
 

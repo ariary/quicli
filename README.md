@@ -101,6 +101,7 @@ func main() {
 ```bash
 $ say-hello color --foreground
 $ say-hello co --foreground      # alias works
+$ say-hello w --say "shhh"       # unambiguous prefix works too
 $ say-hello whisper --say "shhh" --times 2
 ```
 
@@ -179,6 +180,7 @@ Command get: get a resource
 ```bash
 $ mytool get --id abc123
 $ mytool g --id abc123         # alias works
+$ mytool ge --id abc123        # unambiguous prefix works too
 $ mytool lst                   # quicli error: unknown subcommand 'lst', did you mean 'list'?
 $ MYTOOL_VERBOSE=true mytool list
 ```
@@ -232,6 +234,12 @@ Override per flag: `EnvVar: "MY_CUSTOM_VAR"` · Opt out: `EnvVar: "-"`
 ./say-hello --completion bash >> ~/.bash_completion
 ./say-hello --completion zsh  >  ~/.zsh/completions/_say-hello
 ./say-hello --completion fish >  ~/.config/fish/completions/say-hello.fish
+```
+
+**Prefix matching** type just enough to be unambiguous:
+```bash
+$ mytool g --id abc123           # matches "get" (unique prefix)
+$ mytool d                       # matches "delete" (unique prefix)
 ```
 
 **Typo detection** suggests the closest subcommand on misspelling:
