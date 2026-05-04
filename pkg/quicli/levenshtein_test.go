@@ -43,3 +43,36 @@ func TestFindClosestSubcommand(t *testing.T) {
 		t.Errorf("expected empty, got %q", got)
 	}
 }
+
+func TestFindClosestSubcommandDistanceTwoBoundary(t *testing.T) {
+	// levenshtein("dele", "delete") = 2, exactly at maxDist boundary — must match.
+	subs := Subcommands{{Name: "delete"}}
+	if got := findClosestSubcommand(subs, "dele"); got != "delete" {
+		t.Errorf("distance 2 boundary: expected 'delete', got %q", got)
+	}
+}
+
+func TestFindClosestSubcommandDistanceThreeRejects(t *testing.T) {
+	// levenshtein("del", "delete") = 3, beyond maxDist — must NOT match.
+	subs := Subcommands{{Name: "delete"}}
+	if got := findClosestSubcommand(subs, "del"); got != "" {
+		t.Errorf("distance 3: expected empty, got %q", got)
+	}
+}
+
+func TestFindClosestSubcommandFirstMatchWins(t *testing.T) {
+	// "ab" is distance 1 from both "ax" and "ay". First match (by name) wins.
+	subs := Subcommands{{Name: "ax"}, {Name: "ay"}}
+	if got := findClosestSubcommand(subs, "ab"); got != "ax" {
+		t.Errorf("equidistant names: expected 'ax', got %q", got)
+	}
+
+	// Name vs alias equidistant: name match (found first) wins.
+	subs2 := Subcommands{
+		{Name: "ax"},
+		{Name: "other", Aliases: Aliases("az")},
+	}
+	if got := findClosestSubcommand(subs2, "ab"); got != "ax" {
+		t.Errorf("name vs alias equidistant: expected 'ax', got %q", got)
+	}
+}

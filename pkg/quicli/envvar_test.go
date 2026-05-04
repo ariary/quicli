@@ -14,6 +14,10 @@ func TestEnvVarName(t *testing.T) {
 		{"say-hello", "count", "SAY_HELLO_COUNT"},
 		{"./mycli", "output-format", "MYCLI_OUTPUT_FORMAT"},
 		{"prog", "file", "PROG_FILE"},
+		{"appZ", "flag", "APPZ_FLAG"},   // Z boundary
+		{"app0", "flag", "APP0_FLAG"},   // 0 boundary
+		{"app9", "flag", "APP9_FLAG"},   // 9 boundary
+		{"app09Z", "x", "APP09Z_X"},     // combined boundaries
 	}
 	for _, tc := range cases {
 		if got := envVarName(tc.progName, tc.flagName); got != tc.want {

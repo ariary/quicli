@@ -73,3 +73,131 @@ func TestGenerateCompletionUnknownShell(t *testing.T) {
 		t.Error("expected error for unknown shell")
 	}
 }
+
+func hasStr(ss []string, s string) bool {
+	for _, v := range ss {
+		if v == s {
+			return true
+		}
+	}
+	return false
+}
+
+func TestAllFlagNamesWithAndWithoutShort(t *testing.T) {
+	flags := []Flag{
+		{Name: "verbose", Description: "verbose"},
+		{Name: "output", Description: "output", NoShortName: true},
+	}
+	names := allFlagNames(flags)
+	if !hasStr(names, "--verbose") {
+		t.Error("--verbose should be present")
+	}
+	if !hasStr(names, "-v") {
+		t.Error("-v should be present for flag without NoShortName")
+	}
+	if !hasStr(names, "--output") {
+		t.Error("--output should be present")
+	}
+	if hasStr(names, "-o") {
+		t.Error("-o should NOT be present (NoShortName=true)")
+	}
+}
+
+func TestBashCompletionNoSubcommands(t *testing.T) {
+	cli := Cli{
+		Usage:       "prog [flags]",
+		Description: "test",
+		Flags:       Flags{{Name: "verbose", Default: false, Description: "verbose"}},
+		Function:    func(Config) {},
+	}
+	script, err := generateCompletion(&cli, "bash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(script, "local commands") {
+		t.Error("bash: no subcommands should not have 'local commands'")
+	}
+	if !strings.Contains(script, "--verbose") {
+		t.Error("bash: flags should appear")
+	}
+	if strings.Contains(script, "COMP_CWORD -eq 1") {
+		t.Error("bash: no subcommand branch expected without subcommands")
+	}
+}
+
+func TestZshCompletionNoSubcommands(t *testing.T) {
+	cli := Cli{
+		Usage:       "prog [flags]",
+		Description: "test",
+		Flags:       Flags{{Name: "verbose", Default: false, Description: "verbose"}},
+		Function:    func(Config) {},
+	}
+	script, err := generateCompletion(&cli, "zsh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(script, "commands=(") {
+		t.Error("zsh: no subcommands should not have commands array")
+	}
+	if strings.Contains(script, "_describe") {
+		t.Error("zsh: no subcommands should not use _describe")
+	}
+	if !strings.Contains(script, "_arguments") {
+		t.Error("zsh: should use _arguments for flags")
+	}
+}
+
+func TestFishCompletionAliases(t *testing.T) {
+	cli := Cli{
+		Usage:       "prog [command]",
+		Description: "test",
+		Subcommands: Subcommands{
+			{Name: "build", Aliases: Aliases("b"), Description: "build stuff", Function: func(Config) {}},
+		},
+		Flags:    Flags{{Name: "verbose", Default: false, Description: "verbose"}},
+		Function: func(Config) {},
+	}
+	script, err := generateCompletion(&cli, "fish")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Check for the alias-specific line (contains "(alias)" marker)
+	if !strings.Contains(script, "(alias)") {
+		t.Error("fish: alias should produce '(alias)' marker in completion")
+	}
+}
+
+func TestFishCompletionNoShortName(t *testing.T) {
+	cli := Cli{
+		Usage:       "prog [flags]",
+		Description: "test",
+		Flags:       Flags{{Name: "verbose", Default: false, Description: "verbose", NoShortName: true}},
+		Function:    func(Config) {},
+	}
+	script, err := generateCompletion(&cli, "fish")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(script, "-l verbose") {
+		t.Error("fish: long name should appear")
+	}
+	if strings.Contains(script, "-s v") {
+		t.Error("fish: NoShortName should not produce -s flag")
+	}
+}
+
+func TestFishCompletionWithShortName(t *testing.T) {
+	cli := Cli{
+		Usage:       "prog [flags]",
+		Description: "test",
+		Flags:       Flags{{Name: "verbose", Default: false, Description: "verbose"}},
+		Function:    func(Config) {},
+	}
+	script, err := generateCompletion(&cli, "fish")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(script, "-s v") {
+		t.Error("fish: normal flag should produce -s short name")
+	}
+}
