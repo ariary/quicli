@@ -200,3 +200,167 @@ func TestJSONSchemaSlice(t *testing.T) {
 		t.Errorf("slice type: got %v, want array", prop["type"])
 	}
 }
+
+func TestJSONSchemaPropertyDescription(t *testing.T) {
+	cli := Cli{
+		Flags: Flags{{Name: "count", Default: 1, Description: "how many"}},
+	}
+	schema := cli.JSONSchema()
+	props := schema["properties"].(map[string]any)
+	prop := props["count"].(map[string]any)
+	if prop["description"] != "how many" {
+		t.Errorf("description: got %v, want 'how many'", prop["description"])
+	}
+}
+
+func TestJSONSchemaNoDescription(t *testing.T) {
+	cli := Cli{
+		Flags: Flags{{Name: "count", Default: 1, Description: ""}},
+	}
+	schema := cli.JSONSchema()
+	props := schema["properties"].(map[string]any)
+	prop := props["count"].(map[string]any)
+	if _, ok := prop["description"]; ok {
+		t.Error("empty description should not produce 'description' key")
+	}
+}
+
+func TestJSONSchemaZeroIntDefault(t *testing.T) {
+	cli := Cli{
+		Flags: Flags{{Name: "count", Default: 0, Description: "count"}},
+	}
+	schema := cli.JSONSchema()
+	props := schema["properties"].(map[string]any)
+	prop := props["count"].(map[string]any)
+	if _, ok := prop["default"]; ok {
+		t.Error("zero int default should not produce 'default' key")
+	}
+}
+
+func TestJSONSchemaNonZeroIntDefault(t *testing.T) {
+	cli := Cli{
+		Flags: Flags{{Name: "count", Default: 5, Description: "count"}},
+	}
+	schema := cli.JSONSchema()
+	props := schema["properties"].(map[string]any)
+	prop := props["count"].(map[string]any)
+	if prop["default"] != 5 {
+		t.Errorf("non-zero int default: got %v, want 5", prop["default"])
+	}
+}
+
+func TestJSONSchemaZeroStringDefault(t *testing.T) {
+	cli := Cli{
+		Flags: Flags{{Name: "name", Default: "", Description: "name"}},
+	}
+	schema := cli.JSONSchema()
+	props := schema["properties"].(map[string]any)
+	prop := props["name"].(map[string]any)
+	if _, ok := prop["default"]; ok {
+		t.Error("empty string default should not produce 'default' key")
+	}
+}
+
+func TestJSONSchemaNonZeroStringDefault(t *testing.T) {
+	cli := Cli{
+		Flags: Flags{{Name: "name", Default: "world", Description: "name"}},
+	}
+	schema := cli.JSONSchema()
+	props := schema["properties"].(map[string]any)
+	prop := props["name"].(map[string]any)
+	if prop["default"] != "world" {
+		t.Errorf("non-zero string default: got %v, want world", prop["default"])
+	}
+}
+
+func TestJSONSchemaZeroFloatDefault(t *testing.T) {
+	cli := Cli{
+		Flags: Flags{{Name: "ratio", Default: float64(0), Description: "ratio"}},
+	}
+	schema := cli.JSONSchema()
+	props := schema["properties"].(map[string]any)
+	prop := props["ratio"].(map[string]any)
+	if _, ok := prop["default"]; ok {
+		t.Error("zero float default should not produce 'default' key")
+	}
+}
+
+func TestJSONSchemaNonZeroFloatDefault(t *testing.T) {
+	cli := Cli{
+		Flags: Flags{{Name: "ratio", Default: float64(2.5), Description: "ratio"}},
+	}
+	schema := cli.JSONSchema()
+	props := schema["properties"].(map[string]any)
+	prop := props["ratio"].(map[string]any)
+	if prop["default"] != float64(2.5) {
+		t.Errorf("non-zero float default: got %v, want 2.5", prop["default"])
+	}
+}
+
+func TestJSONSchemaEnvVarMetadata(t *testing.T) {
+	defer setArgs([]string{"prog"})()
+	cli := Cli{
+		Flags: Flags{{Name: "count", Default: 0, Description: "count"}},
+	}
+	schema := cli.JSONSchema()
+	props := schema["properties"].(map[string]any)
+	prop := props["count"].(map[string]any)
+	ev, ok := prop["x-quicli-env-var"]
+	if !ok {
+		t.Fatal("env var metadata should be present")
+	}
+	if ev != "PROG_COUNT" {
+		t.Errorf("env var: got %v, want PROG_COUNT", ev)
+	}
+}
+
+func TestJSONSchemaEnvVarOptOut(t *testing.T) {
+	defer setArgs([]string{"prog"})()
+	cli := Cli{
+		Flags: Flags{{Name: "secret", Default: "", Description: "secret", EnvVar: "-"}},
+	}
+	schema := cli.JSONSchema()
+	props := schema["properties"].(map[string]any)
+	prop := props["secret"].(map[string]any)
+	if _, ok := prop["x-quicli-env-var"]; ok {
+		t.Error("opted-out env var should not produce metadata")
+	}
+}
+
+func TestJSONSchemaNoFlags(t *testing.T) {
+	cli := Cli{Description: "empty"}
+	schema := cli.JSONSchema()
+	if _, ok := schema["properties"]; ok {
+		t.Error("no flags should not produce 'properties' key")
+	}
+	if _, ok := schema["required"]; ok {
+		t.Error("no flags should not produce 'required' key")
+	}
+}
+
+func TestJSONSchemaNoEnum(t *testing.T) {
+	cli := Cli{
+		Flags: Flags{{Name: "name", Default: "world", Description: "name"}},
+	}
+	schema := cli.JSONSchema()
+	props := schema["properties"].(map[string]any)
+	prop := props["name"].(map[string]any)
+	if _, ok := prop["enum"]; ok {
+		t.Error("flag without choices should not have enum")
+	}
+}
+
+func TestJSONSchemaStringNoSubcommands(t *testing.T) {
+	cli := Cli{
+		Description: "test",
+		Flags:       Flags{{Name: "name", Default: "world", Description: "who"}},
+	}
+	s := cli.JSONSchemaString()
+	var parsed map[string]any
+	if err := json.Unmarshal([]byte(s), &parsed); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+	if _, ok := parsed["x-quicli-subcommands"]; ok {
+		t.Error("no subcommands should not produce x-quicli-subcommands")
+	}
+}
