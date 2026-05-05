@@ -423,3 +423,25 @@ func TestEnvOnlyInSubcommand(t *testing.T) {
 		t.Errorf("token: got %q, want abc123", gotToken)
 	}
 }
+
+func TestCheckEnvOnlyRequiredMissing(t *testing.T) {
+	defer setArgs([]string{"prog"})()
+	flags := []Flag{{Name: "token", Default: "", Description: "token", EnvOnly: true, Required: true}}
+	errs := checkEnvOnlyFlags(flags)
+	if len(errs) != 1 {
+		t.Fatalf("expected 1 error, got %d: %v", len(errs), errs)
+	}
+	if !strings.Contains(errs[0], "token") {
+		t.Errorf("error should mention token: %s", errs[0])
+	}
+}
+
+func TestCheckEnvOnlyRequiredProvided(t *testing.T) {
+	defer setArgs([]string{"prog"})()
+	t.Setenv("PROG_TOKEN", "abc")
+	flags := []Flag{{Name: "token", Default: "", Description: "token", EnvOnly: true, Required: true}}
+	errs := checkEnvOnlyFlags(flags)
+	if len(errs) != 0 {
+		t.Errorf("expected no errors, got %v", errs)
+	}
+}

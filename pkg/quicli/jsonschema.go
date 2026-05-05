@@ -139,5 +139,9 @@ func flagToSchemaProperty(f Flag) map[string]any {
 		prop["x-quicli-env-var"] = ev
 	}
 
+	if f.EnvOnly {
+		prop["x-quicli-input"] = "env-only"
+	}
+
 	return prop
 }

@@ -212,6 +212,7 @@ func (c *Cli) Parse() (config Config) {
 	}
 
 	validateFlags(c.Flags, fs)
+	validateEnvOnlyFlags(c.Flags)
 	return config
 }
 

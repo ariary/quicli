@@ -255,6 +255,7 @@ func (c *Cli) RunWithSubcommand() {
 	}
 
 	validateFlags(allFlags, fs)
+	validateEnvOnlyFlags(allFlags)
 
 	// Run
 	if isRootCommand(c.Subcommands) {

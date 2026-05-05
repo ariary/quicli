@@ -364,3 +364,32 @@ func TestJSONSchemaStringNoSubcommands(t *testing.T) {
 		t.Error("no subcommands should not produce x-quicli-subcommands")
 	}
 }
+
+func TestJSONSchemaEnvOnlyMarker(t *testing.T) {
+	defer setArgs([]string{"prog"})()
+	cli := Cli{
+		Flags: Flags{{Name: "secret", Default: "", Description: "API secret", EnvOnly: true}},
+	}
+	schema := cli.JSONSchema()
+	props := schema["properties"].(map[string]any)
+	prop := props["secret"].(map[string]any)
+	input, ok := prop["x-quicli-input"]
+	if !ok {
+		t.Fatal("env-only flag should have x-quicli-input marker")
+	}
+	if input != "env-only" {
+		t.Errorf("x-quicli-input: got %v, want env-only", input)
+	}
+}
+
+func TestJSONSchemaNonEnvOnlyNoMarker(t *testing.T) {
+	cli := Cli{
+		Flags: Flags{{Name: "count", Default: 0, Description: "count"}},
+	}
+	schema := cli.JSONSchema()
+	props := schema["properties"].(map[string]any)
+	prop := props["count"].(map[string]any)
+	if _, ok := prop["x-quicli-input"]; ok {
+		t.Error("non-env-only flag should not have x-quicli-input")
+	}
+}
