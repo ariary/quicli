@@ -27,6 +27,7 @@ type Flag struct {
 	EnvVar            string        // env var override (activated in PR2)
 	Required          bool          // flag must be explicitly provided
 	Choices           []string      // valid values (for string flags)
+	EnvOnly           bool          // flag is only settable via environment variable (not registered as CLI flag)
 }
 
 type Flags []Flag
@@ -140,6 +141,9 @@ func (c *Cli) Parse() (config Config) {
 			fmt.Println(QUICLI_ERROR_PREFIX + "empty flag name definition")
 			os.Exit(2)
 		}
+		if f.EnvOnly {
+			continue
+		}
 		if f.Default == nil {
 			f.Default = false
 		}
@@ -185,6 +189,7 @@ func (c *Cli) Parse() (config Config) {
 	fs.Parse(os.Args[1:])
 	config.Args = fs.Args()
 	applyEnvVars(c.Flags, fs)
+	applyEnvOnlyFlags(c.Flags, config)
 
 	if completionShell != "" {
 		script, err := generateCompletion(c, completionShell)
