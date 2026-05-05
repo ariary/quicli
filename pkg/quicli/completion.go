@@ -40,6 +40,9 @@ func allFlagNames(flags []Flag) []string {
 	var names []string
 	seen := map[string]bool{}
 	for _, f := range flags {
+		if f.EnvOnly {
+			continue
+		}
 		names = append(names, "--"+f.Name)
 		short := f.ShortName
 		if short == "" {
