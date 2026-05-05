@@ -201,3 +201,19 @@ func TestFishCompletionWithShortName(t *testing.T) {
 		t.Error("fish: normal flag should produce -s short name")
 	}
 }
+
+func TestAllFlagNamesSkipsEnvOnly(t *testing.T) {
+	flags := []Flag{
+		{Name: "output", Default: "", Description: "output file"},
+		{Name: "secret", Default: "", Description: "API secret", EnvOnly: true},
+	}
+	names := allFlagNames(flags)
+	for _, n := range names {
+		if strings.Contains(n, "secret") {
+			t.Errorf("env-only flag should not appear in completion: %v", names)
+		}
+	}
+	if len(names) != 2 {
+		t.Errorf("expected 2 entries (--output, -o), got %d: %v", len(names), names)
+	}
+}

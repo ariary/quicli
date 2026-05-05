@@ -274,59 +274,82 @@ Programmatic access: `cli.JSONSchema()`, `cli.SubcommandSchemas()`, `cli.JSONSch
 
 ---
 
-### From CLI to MCP server
+### AI agent integration
 
-quicli generates JSON Schema from your flags automatically. This is the foundation for turning any quicli CLI into an [MCP](https://modelcontextprotocol.io/) tool server so AI agents can call your CLI with typed inputs.
+quicli CLIs are AI-ready out of the box. Two approaches depending on your setup:
 
-**Step 1** Build your CLI normally (you already did this):
+#### With MCP (recommended for Claude, Cursor, etc.)
 
-```golang
-type ScanOpts struct {
-    Target string `cli:"target to scan" required:"true"`
-    Port   int    `cli:"port number"    default:"443"`
-}
+Install the bridge:
+```bash
+go install github.com/ariary/quicli/cmd/quicli-mcp@latest
+```
 
-cli := quicli.Cli{
-    Usage:       "scanner [command] [flags]",
-    Description: "Network scanner",
-    Function:    func(cfg quicli.Config) {},
-    Subcommands: quicli.Subcommands{
-        quicli.NewSubcommand("scan", "scan a target", func(o ScanOpts) {
-            fmt.Printf("scanning %s:%d\n", o.Target, o.Port)
-        }),
-    },
+Add to your MCP client config (e.g. `~/.claude/claude_desktop_config.json`):
+```json
+{
+  "mcpServers": {
+    "my-tool": {
+      "command": "quicli-mcp",
+      "args": ["/path/to/my-tool"]
+    }
+  }
 }
 ```
 
-**Step 2** Get the schemas for your subcommands:
+That's it. Your CLI's flags become typed tool parameters. Subcommands become separate tools. Env-only flags (`EnvOnly: true`) are passed as environment variables, not CLI args.
 
-```golang
-schemas := cli.SubcommandSchemas()
-// schemas["scan"] → {
-//   "type": "object",
-//   "properties": {
-//     "target": {"type":"string", "description":"target to scan"},
-//     "port":   {"type":"integer", "description":"port number", "default":443}
-//   },
-//   "required": ["target"]
-// }
-```
+#### Without MCP (direct API integration)
 
-Each schema is a valid JSON Schema, exactly what MCP's `tools/list` needs for `inputSchema`, and what OpenAI/Claude function calling needs for `parameters`.
-
-**Step 3** Wire it into an MCP server:
-
-The MCP tool-server protocol is JSON-RPC over stdio. The mapping is:
-
-| MCP method | quicli API |
-|---|---|
-| `tools/list` | `cli.SubcommandSchemas()` -> tool name + inputSchema |
-| `tools/call` | Parse input JSON -> populate flags -> call `Function` |
-
-The schema generation is the hard part, you already have it. The protocol framing is ~200 lines of Go on top.
+Any quicli CLI exposes its contract via `--json-schema`. Feed it to any LLM with tool/function calling:
 
 ```bash
-$ scanner --json-schema   # verify your schemas look right
+# 1. Get the schema
+SCHEMA=$(./my-tool --json-schema)
+
+# 2. Use it as a tool definition in your API call
+curl https://api.anthropic.com/v1/messages \
+  -H "x-api-key: $ANTHROPIC_API_KEY" \
+  -d "{
+    \"model\": \"claude-sonnet-4-20250514\",
+    \"tools\": [{
+      \"name\": \"my-tool\",
+      \"description\": \"$(echo $SCHEMA | jq -r .description)\",
+      \"input_schema\": $SCHEMA
+    }],
+    \"messages\": [{\"role\": \"user\", \"content\": \"...\"}]
+  }"
+
+# 3. When the model calls the tool, run:
+./my-tool --count 5 --name hello
+```
+
+The schema works with Claude API tool_use, OpenAI function calling, or any agent framework that accepts JSON Schema.
+
+#### Env-only flags for secrets
+
+Keep API keys and tokens out of shell history:
+
+```golang
+type Opts struct {
+    Target string `cli:"target to scan" required:"true"`
+    APIKey string `cli:"API key"        env:"only"`
+}
+```
+
+`--help` won't show `APIKey`. `--json-schema` marks it as `"x-quicli-input": "env-only"`. The MCP bridge passes it as an environment variable automatically.
+
+#### Debug your flags
+
+See where each flag's value comes from:
+
+```bash
+$ MYTOOL_NAME=world ./mytool --count 5 --debug-options
+FLAG      VALUE    SOURCE
+--count   5        cli
+--name    world    env (MYTOOL_NAME)
+--format  json     default
+--secret  ***      env (MYTOOL_SECRET)
 ```
 
 ---

@@ -89,3 +89,78 @@ func TestApplyEnvVarCLIOverridesEnv(t *testing.T) {
 		t.Errorf("CLI should override env var: got %d, want 3", got)
 	}
 }
+
+func TestEnvOnlyFlagResolved(t *testing.T) {
+	defer setArgs([]string{"prog"})()
+	t.Setenv("PROG_SECRET", "s3cret")
+
+	cli := Cli{
+		Usage:       "prog [flags]",
+		Description: "test",
+		Flags:       Flags{{Name: "secret", Default: "", Description: "a secret", EnvOnly: true}},
+	}
+	cfg := cli.Parse()
+	if got := cfg.GetStringFlag("secret"); got != "s3cret" {
+		t.Errorf("env-only string flag: got %q, want %q", got, "s3cret")
+	}
+}
+
+func TestEnvOnlyFlagWithExplicitEnvVar(t *testing.T) {
+	defer setArgs([]string{"prog"})()
+	t.Setenv("MY_SECRET", "token123")
+
+	cli := Cli{
+		Usage:       "prog [flags]",
+		Description: "test",
+		Flags:       Flags{{Name: "secret", Default: "", Description: "a secret", EnvOnly: true, EnvVar: "MY_SECRET"}},
+	}
+	cfg := cli.Parse()
+	if got := cfg.GetStringFlag("secret"); got != "token123" {
+		t.Errorf("env-only explicit env var: got %q, want %q", got, "token123")
+	}
+}
+
+func TestEnvOnlyFlagDefault(t *testing.T) {
+	defer setArgs([]string{"prog"})()
+	// No env var set — should use default value.
+
+	cli := Cli{
+		Usage:       "prog [flags]",
+		Description: "test",
+		Flags:       Flags{{Name: "secret", Default: "fallback", Description: "a secret", EnvOnly: true}},
+	}
+	cfg := cli.Parse()
+	if got := cfg.GetStringFlag("secret"); got != "fallback" {
+		t.Errorf("env-only default: got %q, want %q", got, "fallback")
+	}
+}
+
+func TestEnvOnlyFlagIntType(t *testing.T) {
+	defer setArgs([]string{"prog"})()
+	t.Setenv("PROG_PORT", "9090")
+
+	cli := Cli{
+		Usage:       "prog [flags]",
+		Description: "test",
+		Flags:       Flags{{Name: "port", Default: 8080, Description: "port", EnvOnly: true}},
+	}
+	cfg := cli.Parse()
+	if got := cfg.GetIntFlag("port"); got != 9090 {
+		t.Errorf("env-only int flag: got %d, want 9090", got)
+	}
+}
+
+func TestEnvOnlyFlagBoolType(t *testing.T) {
+	defer setArgs([]string{"prog"})()
+	t.Setenv("PROG_DEBUG", "true")
+
+	cli := Cli{
+		Usage:       "prog [flags]",
+		Description: "test",
+		Flags:       Flags{{Name: "debug", Default: false, Description: "debug mode", EnvOnly: true}},
+	}
+	cfg := cli.Parse()
+	if got := cfg.GetBoolFlag("debug"); got != true {
+		t.Errorf("env-only bool flag: got %v, want true", got)
+	}
+}

@@ -74,8 +74,16 @@ func flagsFromStruct(t reflect.Type) ([]Flag, error) {
 			Name:        strings.ToLower(field.Name),
 			Description: cliTag,
 			ShortName:   field.Tag.Get("short"),
-			EnvVar:      field.Tag.Get("env"),
 			Required:    field.Tag.Get("required") == "true",
+		}
+		envTag := field.Tag.Get("env")
+		if envTag == "only" {
+			f.EnvOnly = true
+		} else if strings.HasPrefix(envTag, "only:") {
+			f.EnvOnly = true
+			f.EnvVar = strings.TrimPrefix(envTag, "only:")
+		} else {
+			f.EnvVar = envTag
 		}
 		if choicesTag := field.Tag.Get("choices"); choicesTag != "" {
 			f.Choices = strings.Split(choicesTag, ",")

@@ -80,6 +80,9 @@ func (c *Cli) RunWithSubcommand() {
 
 	//flags
 	for _, f := range c.Flags {
+		if f.EnvOnly {
+			continue
+		}
 		// prepation checks
 		if len(f.Name) == 0 {
 			fmt.Println(QUICLI_ERROR_PREFIX + "empty flag name defintion")
@@ -205,6 +208,9 @@ func (c *Cli) RunWithSubcommand() {
 	var jsonSchemaFlag bool
 	fs.BoolVar(&jsonSchemaFlag, "json-schema", false, "output JSON Schema and exit")
 
+	var debugOptionsFlag bool
+	fs.BoolVar(&debugOptionsFlag, "debug-options", false, "show flag values and their sources")
+
 	wUsage.Flush()
 	// Parse
 	fs.Usage = func() { fmt.Print(usage.String()) }
@@ -213,6 +219,12 @@ func (c *Cli) RunWithSubcommand() {
 	} else if len(os.Args) > 2 {
 		fs.Parse(os.Args[2:])
 	}
+
+	cliSet := map[string]bool{}
+	fs.Visit(func(f *flag.Flag) {
+		cliSet[f.Name] = true
+	})
+
 	config.Args = fs.Args()
 	allFlags := c.Flags
 	if !isRootCommand(c.Subcommands) {
@@ -220,6 +232,12 @@ func (c *Cli) RunWithSubcommand() {
 		allFlags = append(allFlags, sub.Flags...)
 	}
 	applyEnvVars(allFlags, fs)
+	applyEnvOnlyFlags(allFlags, config)
+
+	if debugOptionsFlag {
+		sources := buildSourceMap(allFlags, fs, cliSet)
+		printDebugOptions(allFlags, config, sources)
+	}
 
 	if completionShell != "" {
 		script, err := generateCompletion(c, completionShell)
@@ -251,6 +269,7 @@ func (c *Cli) RunWithSubcommand() {
 	}
 
 	validateFlags(allFlags, fs)
+	validateEnvOnlyFlags(allFlags)
 
 	// Run
 	if isRootCommand(c.Subcommands) {

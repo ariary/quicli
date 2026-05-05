@@ -286,6 +286,45 @@ func TestFlagsFromStructRequired(t *testing.T) {
 	}
 }
 
+func TestFlagsFromStructEnvOnly(t *testing.T) {
+	type opts struct {
+		Token string `cli:"auth token" env:"only"`
+		Name  string `cli:"your name"`
+	}
+	flags, err := flagsFromStruct(reflect.TypeOf(opts{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(flags) != 2 {
+		t.Fatalf("got %d flags, want 2", len(flags))
+	}
+	if !flags[0].EnvOnly {
+		t.Error("Token flag should have EnvOnly=true")
+	}
+	if flags[0].EnvVar != "" {
+		t.Errorf("EnvVar should be empty (auto-derived), got %q", flags[0].EnvVar)
+	}
+	if flags[1].EnvOnly {
+		t.Error("Name flag should not be env-only")
+	}
+}
+
+func TestFlagsFromStructEnvOnlyWithExplicitVar(t *testing.T) {
+	type opts struct {
+		Token string `cli:"auth token" env:"only:MY_TOKEN"`
+	}
+	flags, err := flagsFromStruct(reflect.TypeOf(opts{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !flags[0].EnvOnly {
+		t.Error("should be EnvOnly")
+	}
+	if flags[0].EnvVar != "MY_TOKEN" {
+		t.Errorf("EnvVar: got %q, want MY_TOKEN", flags[0].EnvVar)
+	}
+}
+
 func TestFlagsFromStructChoices(t *testing.T) {
 	type opts struct {
 		Format string `cli:"output format" choices:"json,yaml,csv"`
@@ -377,5 +416,26 @@ func TestNewSubcommandDefaultsUsed(t *testing.T) {
 
 	if gotName != "stranger" {
 		t.Errorf("default: got %q, want stranger", gotName)
+	}
+}
+
+func TestRunFuncEnvOnly(t *testing.T) {
+	defer setArgs([]string{"prog"})()
+	t.Setenv("PROG_TOKEN", "secret123")
+
+	type Opts struct {
+		Token string `cli:"auth token" env:"only"`
+		Name  string `cli:"your name" default:"world"`
+	}
+	var gotToken, gotName string
+	RunFunc("prog [flags]", "test", func(o Opts) {
+		gotToken = o.Token
+		gotName = o.Name
+	})
+	if gotToken != "secret123" {
+		t.Errorf("RunFunc env-only: got %q, want secret123", gotToken)
+	}
+	if gotName != "world" {
+		t.Errorf("RunFunc name: got %q, want world", gotName)
 	}
 }

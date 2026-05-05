@@ -27,6 +27,7 @@ type Flag struct {
 	EnvVar            string        // env var override (activated in PR2)
 	Required          bool          // flag must be explicitly provided
 	Choices           []string      // valid values (for string flags)
+	EnvOnly           bool          // flag is only settable via environment variable (not registered as CLI flag)
 }
 
 type Flags []Flag
@@ -140,6 +141,9 @@ func (c *Cli) Parse() (config Config) {
 			fmt.Println(QUICLI_ERROR_PREFIX + "empty flag name definition")
 			os.Exit(2)
 		}
+		if f.EnvOnly {
+			continue
+		}
 		if f.Default == nil {
 			f.Default = false
 		}
@@ -180,11 +184,26 @@ func (c *Cli) Parse() (config Config) {
 	var jsonSchemaFlag bool
 	fs.BoolVar(&jsonSchemaFlag, "json-schema", false, "output JSON Schema and exit")
 
+	var debugOptionsFlag bool
+	fs.BoolVar(&debugOptionsFlag, "debug-options", false, "show flag values and their sources")
+
 	wUsage.Flush()
 	fs.Usage = func() { fmt.Print(usage.String()) }
 	fs.Parse(os.Args[1:])
+
+	cliSet := map[string]bool{}
+	fs.Visit(func(f *flag.Flag) {
+		cliSet[f.Name] = true
+	})
+
 	config.Args = fs.Args()
 	applyEnvVars(c.Flags, fs)
+	applyEnvOnlyFlags(c.Flags, config)
+
+	if debugOptionsFlag {
+		sources := buildSourceMap(c.Flags, fs, cliSet)
+		printDebugOptions(c.Flags, config, sources)
+	}
 
 	if completionShell != "" {
 		script, err := generateCompletion(c, completionShell)
@@ -207,6 +226,7 @@ func (c *Cli) Parse() (config Config) {
 	}
 
 	validateFlags(c.Flags, fs)
+	validateEnvOnlyFlags(c.Flags)
 	return config
 }
 
