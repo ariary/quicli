@@ -79,3 +79,26 @@ func TestFormatDebugTable(t *testing.T) {
 		t.Error("table should show source")
 	}
 }
+
+func TestDebugOptionsValuesCorrect(t *testing.T) {
+	defer setArgs([]string{"prog", "--count", "5"})()
+	t.Setenv("PROG_NAME", "from-env")
+
+	cli := Cli{
+		Usage:       "prog [flags]",
+		Description: "test",
+		Flags: Flags{
+			{Name: "count", Default: 0, Description: "count"},
+			{Name: "name", Default: "default", Description: "name"},
+			{Name: "secret", Default: "", Description: "secret", EnvOnly: true},
+		},
+	}
+	cfg := cli.Parse()
+
+	if got := cfg.GetIntFlag("count"); got != 5 {
+		t.Errorf("count: got %d, want 5", got)
+	}
+	if got := cfg.GetStringFlag("name"); got != "from-env" {
+		t.Errorf("name: got %q, want from-env", got)
+	}
+}

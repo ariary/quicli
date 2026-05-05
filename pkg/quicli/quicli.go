@@ -184,12 +184,26 @@ func (c *Cli) Parse() (config Config) {
 	var jsonSchemaFlag bool
 	fs.BoolVar(&jsonSchemaFlag, "json-schema", false, "output JSON Schema and exit")
 
+	var debugOptionsFlag bool
+	fs.BoolVar(&debugOptionsFlag, "debug-options", false, "show flag values and their sources")
+
 	wUsage.Flush()
 	fs.Usage = func() { fmt.Print(usage.String()) }
 	fs.Parse(os.Args[1:])
+
+	cliSet := map[string]bool{}
+	fs.Visit(func(f *flag.Flag) {
+		cliSet[f.Name] = true
+	})
+
 	config.Args = fs.Args()
 	applyEnvVars(c.Flags, fs)
 	applyEnvOnlyFlags(c.Flags, config)
+
+	if debugOptionsFlag {
+		sources := buildSourceMap(c.Flags, fs, cliSet)
+		printDebugOptions(c.Flags, config, sources)
+	}
 
 	if completionShell != "" {
 		script, err := generateCompletion(c, completionShell)
