@@ -80,6 +80,9 @@ func (c *Cli) RunWithSubcommand() {
 
 	//flags
 	for _, f := range c.Flags {
+		if f.EnvOnly {
+			continue
+		}
 		// prepation checks
 		if len(f.Name) == 0 {
 			fmt.Println(QUICLI_ERROR_PREFIX + "empty flag name defintion")
@@ -220,6 +223,7 @@ func (c *Cli) RunWithSubcommand() {
 		allFlags = append(allFlags, sub.Flags...)
 	}
 	applyEnvVars(allFlags, fs)
+	applyEnvOnlyFlags(allFlags, config)
 
 	if completionShell != "" {
 		script, err := generateCompletion(c, completionShell)

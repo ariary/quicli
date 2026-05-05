@@ -393,3 +393,33 @@ func TestFlagWasSetNotSet(t *testing.T) {
 		t.Error("flagWasSet should return false when nothing is set")
 	}
 }
+
+func TestEnvOnlyInSubcommand(t *testing.T) {
+	defer setArgs([]string{"prog", "deploy", "--target", "prod"})()
+	t.Setenv("PROG_TOKEN", "abc123")
+
+	var gotTarget, gotToken string
+	cli := Cli{
+		Usage:       "prog [command]",
+		Description: "test",
+		Flags: Flags{
+			{Name: "token", Default: "", Description: "auth token", EnvOnly: true,
+				SharedSubcommand: SubcommandSet{"deploy"}},
+		},
+		Function: func(cfg Config) {},
+		Subcommands: Subcommands{
+			{Name: "deploy", Description: "deploy", Function: func(cfg Config) {
+				gotTarget = cfg.GetStringFlag("target")
+				gotToken = cfg.GetStringFlag("token")
+			}, Flags: Flags{{Name: "target", Default: "", Description: "deploy target", Required: true}}},
+		},
+	}
+	cli.RunWithSubcommand()
+
+	if gotTarget != "prod" {
+		t.Errorf("target: got %q, want prod", gotTarget)
+	}
+	if gotToken != "abc123" {
+		t.Errorf("token: got %q, want abc123", gotToken)
+	}
+}
