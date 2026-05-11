@@ -50,12 +50,7 @@ func (c *Cli) RunWithSubcommand() {
 	//Description
 	if isRootCommand(c.Subcommands) {
 		if len(c.Subcommands) > 0 {
-			subcommandSet := []string{}
-			for _, sub := range c.Subcommands {
-				subcommandSet = append(subcommandSet, sub.Name)
-				subcommandSet = append(subcommandSet, sub.Aliases...)
-			}
-			fmt.Fprintf(wUsage, color.Yellow(c.Description)+"\n\nUsage: "+c.Usage+"\nAvailable commands: "+strings.Join(subcommandSet, ", ")+"\n\n")
+			fmt.Fprintf(wUsage, color.Yellow(c.Description)+"\n\nUsage: "+c.Usage+"\nAvailable commands: "+formatSubcommandList(c.Subcommands)+"\n\n")
 		} else {
 			fmt.Fprintf(wUsage, color.Yellow(c.Description)+"\n\nUsage: "+c.Usage+"\n\n")
 		}
@@ -192,7 +187,11 @@ func (c *Cli) RunWithSubcommand() {
 		}
 	}
 
-	fmt.Fprintf(wUsage, "\nUse \""+color.Yellow(os.Args[0])+" --help\" for more information about the command.\n")
+	if isRootCommand(c.Subcommands) && len(c.Subcommands) > 0 {
+		fmt.Fprintf(wUsage, "\nUse \""+color.Yellow(os.Args[0])+" <command> --help\" for more information about a command.\n")
+	} else if !isRootCommand(c.Subcommands) {
+		fmt.Fprintf(wUsage, "\nUse \""+color.Yellow(os.Args[0])+" --help\" for more information about available commands.\n")
+	}
 
 	//cheat sheet pt1
 	var cheatSheet bool
@@ -275,12 +274,7 @@ func (c *Cli) RunWithSubcommand() {
 	if isRootCommand(c.Subcommands) {
 		if c.Function == nil {
 			if len(os.Args) > 1 && !strings.HasPrefix(os.Args[1], "-") {
-				subcommandSet := []string{}
-				for _, sub := range c.Subcommands {
-					subcommandSet = append(subcommandSet, sub.Name)
-					subcommandSet = append(subcommandSet, sub.Aliases...)
-				}
-				fmt.Println(QUICLI_ERROR_PREFIX + "unknown subcommand '" + os.Args[1] + "'. Available commands: " + strings.Join(subcommandSet, ", "))
+				fmt.Println(QUICLI_ERROR_PREFIX + "unknown subcommand '" + os.Args[1] + "'. Available commands: " + formatSubcommandList(c.Subcommands))
 				os.Exit(2)
 			}
 			fs.Usage()
@@ -352,6 +346,20 @@ func checkSubcommandFunctionIsDefined(c *Cli) {
 			os.Exit(2)
 		}
 	}
+}
+
+// formatSubcommandList: return a comma-separated list of subcommand names with aliases in parentheses
+// e.g. "serve (s), build (b), list (ls, l)"
+func formatSubcommandList(subcommands Subcommands) string {
+	entries := make([]string, 0, len(subcommands))
+	for _, sub := range subcommands {
+		entry := sub.Name
+		if len(sub.Aliases) > 0 {
+			entry += " (" + strings.Join(sub.Aliases, ", ") + ")"
+		}
+		entries = append(entries, entry)
+	}
+	return strings.Join(entries, ", ")
 }
 
 // checkSubcommandAliasesUniqueness: assert the subcommand Aliases are unique (ie not same alias for two different subcommands), exit otherwise

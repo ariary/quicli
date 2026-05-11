@@ -169,7 +169,7 @@ func (c *Cli) Parse() (config Config) {
 			}
 		}
 	}
-	fmt.Fprintf(wUsage, "\nUse \""+color.Yellow(os.Args[0])+" --help\" for more information about the command.\n")
+	// no footer hint here — this IS the help output; a circular "--help" hint adds noise
 
 	var cheatSheet bool
 	if len(c.CheatSheet) > 0 {

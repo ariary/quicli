@@ -162,19 +162,23 @@ $ mytool --help
 A tool that does things
 
 Usage: mytool [command] [flags]
-Available commands: get, g, list, ls, delete
+Available commands: get (g), list (ls), delete
 
 --verbose  -v   verbose output. (default: false) [env: MYTOOL_VERBOSE]
 
-Use "mytool --help" for more information about the command.
+Use "mytool <command> --help" for more information about a command.
 
 $ mytool get --help
 
+A tool that does things
+
+Usage: mytool [command] [flags]
 Command get: get a resource
 
 --id      -i   resource id. (default: "") [env: MYTOOL_ID]
 --output  -o   output format. (default: "text") [env: MYTOOL_OUTPUT]
---verbose -v   verbose output. (default: false) [env: MYTOOL_VERBOSE]
+
+Use "mytool --help" for more information about available commands.
 ```
 
 ```bash
