@@ -377,3 +377,98 @@ func TestRunWithSubcommandCheatSheetPrinted(t *testing.T) {
 		t.Errorf("cheat sheet should be printed, got: %s", out)
 	}
 }
+
+// ── splitKnownArgs ────────────────────────────────────────────────────────────
+
+func boolFlag(name string) Flag   { return Flag{Name: name, Default: false} }
+func stringFlag(name string) Flag { return Flag{Name: name, Default: ""} }
+
+func TestSplitKnownArgs_KnownStringFlagWithValue(t *testing.T) {
+	flags := []Flag{stringFlag("port")}
+	known, pass := splitKnownArgs([]string{"--port", "9292"}, flags)
+	if !sliceEq(known, []string{"--port", "9292"}) {
+		t.Fatalf("expected known=[--port 9292], got %v", known)
+	}
+	if len(pass) != 0 {
+		t.Fatalf("expected no passthrough, got %v", pass)
+	}
+}
+
+func TestSplitKnownArgs_UnknownFlagGoesToPassthrough(t *testing.T) {
+	flags := []Flag{stringFlag("port")}
+	known, pass := splitKnownArgs([]string{"--resume", "abc123"}, flags)
+	if len(known) != 0 {
+		t.Fatalf("expected no known, got %v", known)
+	}
+	if !sliceEq(pass, []string{"--resume", "abc123"}) {
+		t.Fatalf("expected passthrough=[--resume abc123], got %v", pass)
+	}
+}
+
+func TestSplitKnownArgs_KnownBoolFlagNoValue(t *testing.T) {
+	flags := []Flag{boolFlag("no-tokens")}
+	known, pass := splitKnownArgs([]string{"--no-tokens", "--resume"}, flags)
+	if !sliceEq(known, []string{"--no-tokens"}) {
+		t.Fatalf("expected known=[--no-tokens], got %v", known)
+	}
+	if !sliceEq(pass, []string{"--resume"}) {
+		t.Fatalf("expected passthrough=[--resume], got %v", pass)
+	}
+}
+
+func TestSplitKnownArgs_MixedKnownAndUnknown(t *testing.T) {
+	flags := []Flag{stringFlag("port"), boolFlag("no-tokens")}
+	args := []string{"--port", "8080", "--resume", "abc", "--no-tokens", "--model", "opus"}
+	known, pass := splitKnownArgs(args, flags)
+	if !sliceEq(known, []string{"--port", "8080", "--no-tokens"}) {
+		t.Fatalf("unexpected known: %v", known)
+	}
+	if !sliceEq(pass, []string{"--resume", "abc", "--model", "opus"}) {
+		t.Fatalf("unexpected passthrough: %v", pass)
+	}
+}
+
+func TestSplitKnownArgs_InlineValueForm(t *testing.T) {
+	flags := []Flag{stringFlag("port")}
+	known, pass := splitKnownArgs([]string{"--port=9292", "--resume"}, flags)
+	if !sliceEq(known, []string{"--port=9292"}) {
+		t.Fatalf("expected known=[--port=9292], got %v", known)
+	}
+	if !sliceEq(pass, []string{"--resume"}) {
+		t.Fatalf("expected passthrough=[--resume], got %v", pass)
+	}
+}
+
+func TestSplitKnownArgs_DoubleDashTerminator(t *testing.T) {
+	flags := []Flag{stringFlag("port")}
+	known, pass := splitKnownArgs([]string{"--port", "9292", "--", "--resume"}, flags)
+	if !sliceEq(known, []string{"--port", "9292"}) {
+		t.Fatalf("unexpected known: %v", known)
+	}
+	if !sliceEq(pass, []string{"--", "--resume"}) {
+		t.Fatalf("unexpected passthrough: %v", pass)
+	}
+}
+
+func TestSplitKnownArgs_PositionalArgsGoToPassthrough(t *testing.T) {
+	flags := []Flag{stringFlag("port")}
+	known, pass := splitKnownArgs([]string{"somedir", "--port", "9292"}, flags)
+	if !sliceEq(known, []string{"--port", "9292"}) {
+		t.Fatalf("unexpected known: %v", known)
+	}
+	if !sliceEq(pass, []string{"somedir"}) {
+		t.Fatalf("unexpected passthrough: %v", pass)
+	}
+}
+
+func sliceEq(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}

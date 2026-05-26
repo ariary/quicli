@@ -14,11 +14,12 @@ import (
 
 // Subcommand
 type Subcommand struct {
-	Name        string
-	Aliases     []string
-	Description string
-	Function    Runner
-	Flags       []Flag // flags exclusive to this subcommand
+	Name           string
+	Aliases        []string
+	Description    string
+	Function       Runner
+	Flags          []Flag // flags exclusive to this subcommand
+	PassthroughArgs bool   // if true, unrecognised flags are collected into Config.Args instead of causing an error
 }
 
 func Aliases(aliases ...string) []string {
@@ -213,10 +214,18 @@ func (c *Cli) RunWithSubcommand() {
 	wUsage.Flush()
 	// Parse
 	fs.Usage = func() { fmt.Print(usage.String()) }
+	var passthroughArgs []string
 	if isRootCommand(c.Subcommands) && len(os.Args) > 1 {
 		fs.Parse(os.Args[1:])
 	} else if len(os.Args) > 2 {
-		fs.Parse(os.Args[2:])
+		sub := getSubcommandByName(c.Subcommands, os.Args[1])
+		if sub.PassthroughArgs {
+			known, passthrough := splitKnownArgs(os.Args[2:], sub.Flags)
+			fs.Parse(known)
+			passthroughArgs = passthrough
+		} else {
+			fs.Parse(os.Args[2:])
+		}
 	}
 
 	cliSet := map[string]bool{}
@@ -224,7 +233,7 @@ func (c *Cli) RunWithSubcommand() {
 		cliSet[f.Name] = true
 	})
 
-	config.Args = fs.Args()
+	config.Args = append(fs.Args(), passthroughArgs...)
 	allFlags := c.Flags
 	if !isRootCommand(c.Subcommands) {
 		sub := getSubcommandByName(c.Subcommands, os.Args[1])
@@ -379,4 +388,71 @@ func checkSubcommandAliasesUniqueness(c *Cli) {
 			os.Exit(2)
 		}
 	}
+}
+
+// splitKnownArgs separates args into those that match registered flags (known)
+// and everything else (passthrough). Used when Subcommand.PassthroughArgs is true
+// so that unrecognised flags reach Config.Args instead of causing a parse error.
+//
+// For each arg:
+//   - If it matches a registered flag name (--flag or -flag, with or without =value),
+//     it (and its value token when applicable) goes into known.
+//   - Otherwise it goes into passthrough verbatim.
+//
+// Note: for passthrough flags we do not consume the following token as a value
+// because we have no schema for them. The receiving command sees all passthrough
+// tokens in order and parses them correctly itself.
+func splitKnownArgs(args []string, knownFlags []Flag) (known, passthrough []string) {
+	// Build a lookup: normalised flag name → whether it takes a value argument.
+	takesValue := map[string]bool{}
+	for _, f := range knownFlags {
+		_, isBool := f.Default.(bool)
+		for _, prefix := range []string{"--", "-"} {
+			takesValue[prefix+f.Name] = !isBool
+		}
+	}
+
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+
+		if a == "--" {
+			// Terminator: everything from here on is passthrough.
+			passthrough = append(passthrough, args[i:]...)
+			return
+		}
+
+		if !strings.HasPrefix(a, "-") {
+			// Positional argument.
+			passthrough = append(passthrough, a)
+			continue
+		}
+
+		// Determine the base flag name (strip leading dashes, stop at '=').
+		name := strings.TrimLeft(a, "-")
+		hasInlineValue := strings.Contains(name, "=")
+		if idx := strings.Index(name, "="); idx >= 0 {
+			name = name[:idx]
+		}
+
+		longKey := "--" + name
+		shortKey := "-" + name
+
+		needsValue, isKnown := takesValue[longKey]
+		if !isKnown {
+			needsValue, isKnown = takesValue[shortKey]
+		}
+
+		if isKnown {
+			known = append(known, a)
+			// Consume the next token as the flag's value when the flag takes a
+			// value and it was not provided inline (--flag=value form).
+			if needsValue && !hasInlineValue && i+1 < len(args) {
+				i++
+				known = append(known, args[i])
+			}
+		} else {
+			passthrough = append(passthrough, a)
+		}
+	}
+	return
 }
